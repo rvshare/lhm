@@ -15,9 +15,8 @@ module Lhm
       @ddl = ddl
     end
 
-    def satisfies_id_column_requirement?
-      !!((id = columns['id']) &&
-        id[:type] =~ /(bigint|int)\(\d+\)/)
+    def satisfies_primary_key?
+      @pk.is_a?(String) && !!(@columns[@pk][:type] =~ /int\(\d+\)/)
     end
 
     def destination_name

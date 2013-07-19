@@ -107,5 +107,17 @@ module Lhm
         error('impossible chunk options (limit must be greater than start)')
       end
     end
+
+    def execute
+      up_to do |lowest, highest|
+        affected_rows = @connection.update(copy(lowest, highest))
+
+        if affected_rows > 0
+          sleep(throttle_seconds)
+        end
+        @printer.notify(lowest, highest)
+      end
+      @printer.end
+    end
   end
 end

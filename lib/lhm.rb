@@ -102,16 +102,20 @@ module Lhm
       end
   end
 
-  def self.logger=(new_logger)
+  def logger=(new_logger)
     @@logger = new_logger
   end
 
-  def self.logger
+  def logger_params=(params)
+    @@logger_params = params
+  end
+
+  def logger
     @@logger ||=
       begin
-        logger = Logger.new(DEFAULT_LOGGER_OPTIONS[:file])
-        logger.level = DEFAULT_LOGGER_OPTIONS[:level]
-        logger.formatter = nil
+        params = (defined?(@@logger_params) && @@logger_params) ? @@logger_params : DEFAULT_LOGGER_OPTIONS
+        logger = Logger.new(params[:file])
+        logger.level = params[:level]
         logger
       end
   end

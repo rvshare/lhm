@@ -5,6 +5,7 @@ require 'lhm/table'
 require 'lhm/invoker'
 require 'lhm/connection'
 require 'lhm/version'
+require 'logger'
 
 # Large hadron migrator - online schema change tool
 #
@@ -17,6 +18,7 @@ require 'lhm/version'
 #   end
 #
 module Lhm
+  DEFAULT_LOGGER_OPTIONS =  { level: Logger::INFO, file: STDOUT }
 
   # Alters a table with the changes described in the block
   #
@@ -73,6 +75,20 @@ module Lhm
       begin
         raise 'Please call Lhm.setup' unless defined?(ActiveRecord)
         ActiveRecord::Base.connection
+      end
+  end
+
+  def self.logger_params=(params)
+    @@logger_params = params
+  end
+
+  def self.logger
+    @@logger ||= 
+      begin
+        params = (defined?(@@logger_params) && @@logger_params) ? @@logger_params : DEFAULT_LOGGER_OPTIONS
+        logger = Logger.new(params[:file])
+        logger.level = params[:level]
+        logger
       end
   end
 

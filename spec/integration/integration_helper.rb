@@ -17,6 +17,9 @@ end
 require 'lhm/table'
 require 'lhm/sql_helper'
 require 'lhm/connection'
+require 'lhm'
+
+Lhm.logger_params = {level: Logger::FATAL, file: '/dev/null'}
 
 module IntegrationHelper
   #

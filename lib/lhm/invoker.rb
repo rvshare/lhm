@@ -15,12 +15,29 @@ module Lhm
   # and replaced by destination.
   class Invoker
     include SqlHelper
+    LOCK_WAIT_TIMEOUT_DELTA = -2
 
     attr_reader :migrator, :connection
 
     def initialize(origin, connection, options)
       @connection = connection
       @migrator = Migrator.new(origin, connection, options)
+    end
+
+    def set_session_lock_wait_timeouts
+      global_innodb_lock_wait_timeout = @connection.execute("SHOW GLOBAL VARIABLES LIKE 'innodb_lock_wait_timeout'").first.last.to_i
+      global_lock_wait_timeout = @connection.execute("SHOW GLOBAL VARIABLES LIKE 'lock_wait_timeout'").first.last.to_i
+
+      unless safe_to_run?(global_innodb_lock_wait_timeout, global_lock_wait_timeout)
+        raise "The value of lock_wait_timeout: #{global_lock_wait_timeout} or innodb_lock_wait_timeout: #{global_innodb_lock_wait_timeout} is less than the absolute value of the delta #{LOCK_WAIT_TIMEOUT_DELTA.abs}, it is unsafe to run this LHM" 
+      end
+
+      @connection.execute("SET SESSION innodb_lock_wait_timeout=#{global_innodb_lock_wait_timeout + LOCK_WAIT_TIMEOUT_DELTA}") 
+      @connection.execute("SET SESSION lock_wait_timeout=#{global_lock_wait_timeout + LOCK_WAIT_TIMEOUT_DELTA}")
+    end
+
+    def safe_to_run?(global_innodb_lock_wait_timeout, global_lock_wait_timeout)
+      global_lock_wait_timeout > LOCK_WAIT_TIMEOUT_DELTA.abs && global_innodb_lock_wait_timeout > LOCK_WAIT_TIMEOUT_DELTA.abs
     end
 
     def run(options = {})
@@ -35,6 +52,8 @@ module Lhm
             "options[:atomic_switch] (re SqlHelper#supports_atomic_switch?)")
         end
       end
+
+      set_session_lock_wait_timeouts
 
       migration = @migrator.run
 

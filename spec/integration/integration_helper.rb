@@ -8,6 +8,8 @@ $password = YAML.load_file(File.expand_path(File.dirname(__FILE__)) + '/database
 require 'lhm/table'
 require 'lhm/sql_helper'
 
+Lhm.logger_params = {level: Logger::FATAL, file: '/dev/null'}
+
 module IntegrationHelper
   #
   # Connectivity

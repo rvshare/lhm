@@ -14,7 +14,7 @@ describe Lhm::Printer do
     it "prints the percentage" do
       mock = MiniTest::Mock.new
       10.times do |i|
-        mock.expect(:write, :return_value) do |message|
+        mock.expect(:write, :return_value, [String]) do |message|
           assert_match /^\r/, message.first
           assert_match /#{i}\/10/, message.first
         end
@@ -29,7 +29,7 @@ describe Lhm::Printer do
       @length = 0
       mock = MiniTest::Mock.new
       3.times do |i|
-        mock.expect(:write, :return_value) do |message|
+        mock.expect(:write, :return_value, [String]) do |message|
           assert message.first.length >= @length
           @length = message.first.length
         end

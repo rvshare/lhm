@@ -13,14 +13,17 @@ module Lhm
   # Lhm::SqlHelper.supports_atomic_switch?.
   class AtomicSwitcher
     include Command
+    RETRY_SLEEP_TIME = 10
+    MAX_RETRIES = 600
 
-    attr_reader :connection
+    attr_reader :connection, :retries
 
     def initialize(migration, connection = nil)
       @migration = migration
       @connection = connection
       @origin = migration.origin
       @destination = migration.destination
+      @retries = 0
     end
 
     def statements
@@ -43,7 +46,23 @@ module Lhm
 
   private
     def execute
-      @connection.sql(statements)
+      begin
+        @connection.sql(statements)
+      rescue ActiveRecord::StatementInvalid => error
+        if should_retry_exception?(error)
+          @retries += 1
+          raise unless @retries < MAX_RETRIES
+          sleep(RETRY_SLEEP_TIME)
+          Lhm.logger.warn "Retrying sql=#{statements} error=#{error} retries=#{@retries}"
+          retry
+        else
+          raise
+        end
+      end
+    end
+
+    def should_retry_exception?(error)
+      error.message =~ /Lock wait timeout exceeded/
     end
   end
 end

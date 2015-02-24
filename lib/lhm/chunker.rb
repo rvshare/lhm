@@ -58,7 +58,20 @@ module Lhm
       limit ? limit.to_i : nil
     end
 
+    def check_slaves_lag
+    end
+
     def throttle_seconds
+      lag = check_slaves_lag
+
+      if lag > MAX_ALLOWED_LAG
+        @throttle  = @throttle * 10 unless @throttle >= MAX_THROTTLE
+      else if @throttle > DEFAULT_THROTTLE
+        @throttle = @throttle / 10
+      else
+        @throttle = DEFAULT_THROTTLE
+      else
+
       @throttle / 1000.0
     end
 

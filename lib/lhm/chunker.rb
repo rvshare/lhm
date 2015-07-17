@@ -52,8 +52,8 @@ module Lhm
     end
 
     def copy(lowest, highest)
-      "insert ignore into `#{ destination_name }` (#{ columns }) " +
-      "select #{ select_columns } from `#{ origin_name }` " +
+      "insert ignore into `#{ destination_name }` (#{ destination_columns }) " +
+      "select #{ origin_columns } from `#{ origin_name }` " +
       "#{ conditions } #{ origin_name }.`#{ @migration.order_column }` between #{ lowest } and #{ highest }"
     end
 
@@ -106,18 +106,6 @@ module Lhm
       if @start && @limit && @start > @limit
         error('impossible chunk options (limit must be greater than start)')
       end
-    end
-
-    def execute
-      up_to do |lowest, highest|
-        affected_rows = @connection.update(copy(lowest, highest))
-
-        if affected_rows > 0
-          sleep(throttle_seconds)
-        end
-        @printer.notify(lowest, @limit)
-      end
-      @printer.end
     end
   end
 end

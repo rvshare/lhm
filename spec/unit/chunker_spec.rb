@@ -113,7 +113,7 @@ describe Lhm::Chunker do
                                                            :limit     => 2)
       @connection.expect(:update, 1) do |stmt|
         stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /where \(foo.created_at > '2013-07-10' or foo.baz = 'quux'\) and `foo`/
+        stmt =~ /where \(foo.created_at > '2013-07-10' or foo.baz = 'quux'\) and foo/
       end
 
       def @migration.conditions
@@ -145,17 +145,19 @@ describe Lhm::Chunker do
   describe "copy into with a different column to order by" do
     before(:each) do
       @migration   = Lhm::Migration.new(@origin, @destination, "weird_id")
-      @chunker     = Lhm::Chunker.new(@migration, nil, { :start => 1, :limit => 10 })
-      @origin.columns["secret"] = { :metadata => "VARCHAR(255)"}
-      @destination.columns["secret"] = { :metadata => "VARCHAR(255)"}
+      @chunker = Lhm::Chunker.new(@migration, @connection, :throttler => @throttler,
+                                                         :start     => 1,
+                                                         :limit     => 2)
     end
 
-    it "should copy the correct range and column" do
-      @chunker.copy(from = 1, to = 100).must_equal(
-        "insert ignore into `destination` (`secret`) " +
-        "select origin.`secret` from `origin` " +
-        "where origin.`weird_id` between 1 and 100"
-      )
+    it "should copy the correct column" do
+      @connection.expect(:update, 1) do |stmt|
+        stmt = stmt.first if stmt.is_a?(Array)
+        stmt =~ /where foo.`weird_id`/
+      end
+
+      @chunker.run
+      @connection.verify
     end
   end
 end

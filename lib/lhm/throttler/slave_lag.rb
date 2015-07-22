@@ -57,8 +57,7 @@ module Lhm
           slave = Slave.new(host, @get_config)
           if slaves.map(&:host).exclude?(host) && slave.connection
             slaves << slave
-            slave_hosts << slave.slave_hosts
-            slave_hosts.flatten!
+            slave_hosts.concat(slave.slave_hosts)
           end
         end
         slaves
@@ -84,6 +83,7 @@ module Lhm
       def initialize(host, get_config=nil)
         @host = host
         @connection = client(config(get_config))
+        Lhm.logger.info "Connection for #{@host}: #{@connection.inspect}"
       end
 
       def slave_hosts
@@ -98,6 +98,7 @@ module Lhm
 
       def client(config)
         begin
+          Lhm.logger.info "Connecting to #{@host} with config: #{config}"
           Mysql2::Client.new(config)
         rescue Mysql2::Error => e
           Lhm.logger.info "Error conecting to #{@host}: #{e}"
@@ -106,13 +107,9 @@ module Lhm
       end
 
       def config(get_config)
-        attrs = get_config ? get_config.call : ActiveRecord::Base.connection_pool.spec.config.dup
-        {
-          :host => @host,
-          :username => attrs['username'],
-          :password => attrs['password'],
-          :database => attrs['database']
-        }
+        config = get_config ? get_config.call : ActiveRecord::Base.connection_pool.spec.config.dup
+        config['host'] = @host
+        config
       end
 
       def query_connection(query, result)

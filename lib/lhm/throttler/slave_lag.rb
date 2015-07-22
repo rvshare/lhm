@@ -57,8 +57,7 @@ module Lhm
           slave = Slave.new(host, @get_config)
           if slaves.map(&:host).exclude?(host) && slave.connection
             slaves << slave
-            slave_hosts << slave.slave_hosts
-            slave_hosts.flatten!
+            slave_hosts.concat(slave.slave_hosts)
           end
         end
         slaves

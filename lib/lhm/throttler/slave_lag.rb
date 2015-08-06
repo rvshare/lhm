@@ -68,7 +68,12 @@ module Lhm
       end
 
       def max_current_slave_lag
+        slaves.each do |slave|
+          Lhm.logger.info "slave: #{slave.host}"
+          Lhm.logger.info "lag: #{slave.lag}"
+        end
         max = slaves.map { |slave| slave.lag }.flatten.push(0).max
+        Lhm.logger.info "slaves: #{slaves.map(&:host)}"
         Lhm.logger.info "Max current slave lag: #{max}"
         max
       end

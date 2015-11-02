@@ -14,10 +14,9 @@ module Lhm
     # Creates entanglement between two tables. All creates, updates and deletes
     # to origin will be repeated on the destination table.
     def initialize(migration, connection = nil)
-      @common = migration.intersection
+      @intersection = migration.intersection
       @origin = migration.origin
       @destination = migration.destination
-      @order_column = migration.order_column
       @connection = connection
     end
 
@@ -41,8 +40,8 @@ module Lhm
       strip %Q{
         create trigger `#{ trigger(:ins) }`
         after insert on `#{ @origin.name }` for each row
-        replace into `#{ @destination.name }` (#{ @common.joined }) #{ SqlHelper.annotation }
-        values (#{ @common.typed("NEW") })
+        replace into `#{ @destination.name }` (#{ @intersection.destination.joined }) #{ SqlHelper.annotation }
+        values (#{ @intersection.origin.typed('NEW') })
       }
     end
 
@@ -50,8 +49,8 @@ module Lhm
       strip %Q{
         create trigger `#{ trigger(:upd) }`
         after update on `#{ @origin.name }` for each row
-        replace into `#{ @destination.name }` (#{ @common.joined }) #{ SqlHelper.annotation }
-        values (#{ @common.typed("NEW") })
+        replace into `#{ @destination.name }` (#{ @intersection.destination.joined }) #{ SqlHelper.annotation }
+        values (#{ @intersection.origin.typed('NEW') })
       }
     end
 
@@ -60,7 +59,7 @@ module Lhm
         create trigger `#{ trigger(:del) }`
         after delete on `#{ @origin.name }` for each row
         delete ignore from `#{ @destination.name }` #{ SqlHelper.annotation }
-        where `#{ @destination.name }`.`#{ @order_column }` = OLD.`#{ @order_column }`
+        where `#{ @destination.name }`.`id` = OLD.`id`
       }
     end
 
@@ -79,18 +78,22 @@ module Lhm
     end
 
     def before
-      @connection.sql(entangle)
+      entangle.each do |stmt|
+        @connection.execute(tagged(stmt))
+      end
     end
 
     def after
-      @connection.sql(untangle)
+      untangle.each do |stmt|
+        @connection.execute(tagged(stmt))
+      end
     end
 
     def revert
       after
     end
 
-  private
+    private
 
     def strip(sql)
       sql.strip.gsub(/\n */, "\n")

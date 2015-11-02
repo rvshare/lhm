@@ -1,25 +1,12 @@
 # Copyright (c) 2011 - 2013, SoundCloud Ltd., Rany Keddo, Tobias Bielohlawek, Tobias
 # Schmidt
+require 'test_helper'
+require 'yaml'
+require 'active_support'
+$password = YAML.load_file(File.expand_path(File.dirname(__FILE__)) + '/database.yml')['password'] rescue nil
 
-require File.expand_path(File.dirname(__FILE__)) + "/../bootstrap"
-
-begin
-  require 'active_record'
-  begin
-    require 'mysql2'
-  rescue LoadError
-    require 'mysql'
-  end
-rescue LoadError
-  require 'dm-core'
-  require 'dm-mysql-adapter'
-end
 require 'lhm/table'
 require 'lhm/sql_helper'
-require 'lhm/connection'
-require 'lhm'
-
-Lhm.logger_params = {level: Logger::FATAL, file: '/dev/null'}
 
 module IntegrationHelper
   #
@@ -38,26 +25,25 @@ module IntegrationHelper
   end
 
   def connect!(port)
-    adapter = nil
-    if defined?(ActiveRecord)
-      ActiveRecord::Base.establish_connection(
-        :adapter  => defined?(Mysql2) ? 'mysql2' : 'mysql',
-        :host     => '127.0.0.1',
-        :database => 'lhm',
-        :username => 'root',
-        :port     => port
-      )
-      adapter = ActiveRecord::Base.connection
-    elsif defined?(DataMapper)
-      adapter = DataMapper.setup(:default, "mysql://root@localhost:#{port}/lhm")
-    end
-
+    adapter = ar_conn port
     Lhm.setup(adapter)
     unless defined?(@@cleaned_up)
       Lhm.cleanup(true)
       @@cleaned_up  = true
     end
-    @connection = Lhm::Connection.new(adapter)
+    @connection = adapter
+  end
+
+  def ar_conn(port)
+    ActiveRecord::Base.establish_connection(
+      :adapter  => defined?(Mysql2) ? 'mysql2' : 'mysql',
+      :host     => '127.0.0.1',
+      :database => 'lhm',
+      :username => 'root',
+      :port     => port,
+      :password => $password
+    )
+    ActiveRecord::Base.connection
   end
 
   def select_one(*args)
@@ -90,15 +76,26 @@ module IntegrationHelper
       # check the master binlog position and wait for the slave to catch up
       # to that position.
       sleep 1
-    elsif
+    else
       connect_master!
     end
-
 
     yield block
 
     if master_slave_mode?
       connect_master!
+    end
+  end
+
+  # Helps testing behaviour when another client locks the db
+  def start_locking_thread(lock_for, queue, locking_query)
+    Thread.new do
+      conn = Mysql2::Client.new(host: '127.0.0.1', database: 'lhm', user: 'root', port: 3306)
+      conn.query('BEGIN')
+      conn.query(locking_query)
+      queue.push(true)
+      sleep(lock_for) # Sleep for log so LHM gives up
+      conn.query('ROLLBACK')
     end
   end
 
@@ -114,6 +111,10 @@ module IntegrationHelper
     execute "drop table if exists `#{ fixture_name }`"
     execute fixture(fixture_name)
     table_read(fixture_name)
+  end
+
+  def table_rename(from_name, to_name)
+    execute "rename table `#{ from_name }` to `#{ to_name }`"
   end
 
   def table_read(fixture_name)
@@ -134,7 +135,7 @@ module IntegrationHelper
   end
 
   def count_all(table)
-    query = "select count(*) from #{ table }"
+    query = "select count(*) from `#{ table }`"
     select_value(query).to_i
   end
 
@@ -148,18 +149,10 @@ module IntegrationHelper
     non_unique = type == :non_unique ? 1 : 0
 
     !!select_one(%Q<
-      show indexes in #{ table_name }
+      show indexes in `#{ table_name }`
      where key_name = '#{ key_name }'
        and non_unique = #{ non_unique }
     >)
-  end
-
-  def with_per_thread_lhm_connection
-    pool = ActiveRecord::Base.establish_connection(adapter: 'mysql2', database: 'lhm')
-    pool.with_connection do |conn|
-      lhm_connection = Lhm::Connection.new(conn)
-      yield  lhm_connection
-    end
   end
 
   #
@@ -167,13 +160,13 @@ module IntegrationHelper
   #
 
   def master_slave_mode?
-    !!ENV["MASTER_SLAVE"]
+    !!ENV['MASTER_SLAVE']
   end
 
   #
   # Misc
   #
-  
+
   def capture_stdout
     out = StringIO.new
     $stdout = out
@@ -181,5 +174,22 @@ module IntegrationHelper
     return out.string
   ensure
     $stdout = ::STDOUT
+  end
+
+  def simulate_failed_migration
+    Lhm::Entangler.class_eval do
+      alias_method :old_after, :after
+      def after
+        true
+      end
+    end
+
+    yield
+  ensure
+    Lhm::Entangler.class_eval do
+      undef_method :after
+      alias_method :after, :old_after
+      undef_method :old_after
+    end
   end
 end

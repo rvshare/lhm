@@ -6,4 +6,8 @@ pkg/*
 .rvmrc
 .ruby-version
 .ruby-gemset
+bin/rake
+spec/integration/database.yml
+Gemfile
+gemfiles/vendor
 omg.ponies

@@ -19,42 +19,27 @@ module Lhm
 
     attr_reader :migrator, :connection
 
-    def initialize(origin, connection, options)
+    def initialize(origin, connection)
       @connection = connection
-      @migrator = Migrator.new(origin, connection, options)
+      @migrator = Migrator.new(origin, connection)
     end
 
     def set_session_lock_wait_timeouts
-      global_innodb_lock_wait_timeout = @connection.execute("SHOW GLOBAL VARIABLES LIKE 'innodb_lock_wait_timeout'").first.last.to_i
-      global_lock_wait_timeout = @connection.execute("SHOW GLOBAL VARIABLES LIKE 'lock_wait_timeout'").first.last.to_i
+      global_innodb_lock_wait_timeout = @connection.select_one("SHOW GLOBAL VARIABLES LIKE 'innodb_lock_wait_timeout'")
+      global_lock_wait_timeout = @connection.select_one("SHOW GLOBAL VARIABLES LIKE 'lock_wait_timeout'")
 
-      unless safe_to_run?(global_innodb_lock_wait_timeout, global_lock_wait_timeout)
-        raise "The value of lock_wait_timeout: #{global_lock_wait_timeout} or innodb_lock_wait_timeout: #{global_innodb_lock_wait_timeout} is less than the absolute value of the delta #{LOCK_WAIT_TIMEOUT_DELTA.abs}, it is unsafe to run this LHM" 
+      if global_innodb_lock_wait_timeout
+        @connection.execute("SET SESSION innodb_lock_wait_timeout=#{global_innodb_lock_wait_timeout['Value'].to_i + LOCK_WAIT_TIMEOUT_DELTA}")
       end
 
-      @connection.execute("SET SESSION innodb_lock_wait_timeout=#{global_innodb_lock_wait_timeout + LOCK_WAIT_TIMEOUT_DELTA}") 
-      @connection.execute("SET SESSION lock_wait_timeout=#{global_lock_wait_timeout + LOCK_WAIT_TIMEOUT_DELTA}")
-    end
-
-    def safe_to_run?(global_innodb_lock_wait_timeout, global_lock_wait_timeout)
-      global_lock_wait_timeout > LOCK_WAIT_TIMEOUT_DELTA.abs && global_innodb_lock_wait_timeout > LOCK_WAIT_TIMEOUT_DELTA.abs
+      if global_lock_wait_timeout
+        @connection.execute("SET SESSION lock_wait_timeout=#{global_lock_wait_timeout['Value'].to_i + LOCK_WAIT_TIMEOUT_DELTA}")
+      end
     end
 
     def run(options = {})
-      Lhm.logger.info "Starting LHM run on table=#{@migrator.name}"
-
-      if !options.include?(:atomic_switch)
-        if supports_atomic_switch?
-          options[:atomic_switch] = true
-        else
-          raise Error.new(
-            "Using mysql #{version_string}. You must explicitly set " +
-            "options[:atomic_switch] (re SqlHelper#supports_atomic_switch?)")
-        end
-      end
-
+      normalize_options(options)
       set_session_lock_wait_timeouts
-
       migration = @migrator.run
 
       Entangler.new(migration, @connection).run do
@@ -64,6 +49,29 @@ module Lhm
         else
           LockedSwitcher.new(migration, @connection).run
         end
+      end
+    end
+
+    private
+
+    def normalize_options(options)
+      Lhm.logger.info "Starting LHM run on table=#{@migrator.name}"
+
+      unless options.include?(:atomic_switch)
+        if supports_atomic_switch?
+          options[:atomic_switch] = true
+        else
+          raise Error.new(
+            "Using mysql #{version_string}. You must explicitly set " \
+            'options[:atomic_switch] (re SqlHelper#supports_atomic_switch?)')
+        end
+      end
+
+      if options[:throttler]
+        throttler_options = options[:throttler_options] || {}
+        options[:throttler] = Throttler::Factory.create_throttler(options[:throttler], throttler_options)
+      else
+        options[:throttler] = Lhm.throttler
       end
 
     rescue => e

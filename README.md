@@ -22,7 +22,7 @@ is great if you are using this engine, but only solves half the problem.
 At SoundCloud we started having migration pains quite a while ago, and after
 looking around for third party solutions, we decided to create our
 own. We called it Large Hadron Migrator, and it is a gem for online
-ActiveRecord and DataMapper migrations.
+ActiveRecord migrations.
 
 ![LHC](http://farm4.static.flickr.com/3093/2844971993_17f2ddf2a8_z.jpg)
 
@@ -35,7 +35,7 @@ without locking the table. In contrast to [OAK][0] and the
 [facebook tool][1], we only use a copy table and triggers.
 
 The Large Hadron is a test driven Ruby solution which can easily be dropped
-into an ActiveRecord or DataMapper migration. It presumes a single auto
+into an ActiveRecord migration. It presumes a single auto
 incremented numerical primary key called id as per the Rails convention. Unlike
 the [twitter solution][2], it does not require the presence of an indexed
 `updated_at` column.
@@ -43,22 +43,19 @@ the [twitter solution][2], it does not require the presence of an indexed
 ## Requirements
 
 Lhm currently only works with MySQL databases and requires an established
-ActiveRecord or DataMapper connection.
+ActiveRecord connection.
 
-It is compatible and [continuously tested][4] with MRI 1.9.x,
-ActiveRecord 2.3.x and 3.x (mysql and mysql2 adapters), as well as DataMapper
-1.2 (dm-mysql-adapter).
-
-Lhm also works with dm-master-slave-adapter, it'll bind to the master before
-running the migrations.
-
-The test suite is also run against MRI 2.0.0 in Continuous Integration, but
-there are a few bugs left to fix.
+It is compatible and [continuously tested][4] with MRI 2.0.x, 2.1.x,
+ActiveRecord 3.2.x and 4.x (mysql and mysql2 adapters).
 
 ## Limitations
 
-Lhm requires a monotonically increasing numeric Primary Key on the table, due to how
-the Chunker works.
+Due to the Chunker implementation, Lhm requires that the table to migrate has a
+a single integer numeric key column called `id`.
+
+Another note about the Chunker, it performs static sized row copies against the `id`
+column.  Therefore sparse assignment of `id` can cause performance problems for the
+backfills.  Typically LHM assumes that `id` is an `auto_increment` style column.
 
 ## Installation
 
@@ -77,9 +74,6 @@ ActiveRecord::Base.establish_connection(
   :host => '127.0.0.1',
   :database => 'lhm'
 )
-
-# or with DataMapper
-Lhm.setup(DataMapper.setup(:default, 'mysql://127.0.0.1/lhm'))
 
 # and migrate
 Lhm.change_table :users do |m|
@@ -113,33 +107,40 @@ class MigrateUsers < ActiveRecord::Migration
 end
 ```
 
-Using dm-migrations, you'd define all your migrations as follows, and then call
-`migrate_up!` or `migrate_down!` as normal.
+**Note:** Lhm won't delete the old, leftover table. This is on purpose, in order
+to prevent accidental data loss.
 
+## Throttler
+
+Lhm is using a throttle mechanism to read data in your original table.
+
+By default, 40000 rows are read each 0.1 second.
+
+If you want to change that behaviour, you can pass an instance of a throttler with the `throttler` option.
+
+In this example, 1000 rows will be read with a 10 seconds delay between each processing:
 ```ruby
-require 'dm-migrations/migration_runner'
-require 'lhm'
+my_throttler = Lhm::Throttler::Time.new(stride: 1000, delay: 10)
 
-migration 1, :migrate_users do
-  up do
-    Lhm.change_table :users do |m|
-      m.add_column :arbitrary, "INT(12)"
-      m.add_index  [:arbitrary_id, :created_at]
-      m.ddl("alter table %s add column flag tinyint(1)" % m.name)
-    end
-  end
-
-  down do
-    Lhm.change_table :users do |m|
-      m.remove_index  [:arbitrary_id, :created_at]
-      m.remove_column :arbitrary
-    end
-  end
+Lhm.change_table :users, throttler: my_throttler  do |m|
+  #
 end
 ```
 
-**Note:** Lhm won't delete the old, leftover table. This is on purpose, in order
-to prevent accidental data loss.
+### SlaveLag Throttler
+
+Lhm uses by default the time throttler, however a better solution is to throttle the copy of the data
+depending on the time that the slaves are behind. To use the SlaveLag throttler:
+```ruby
+Lhm.change_table :users, throttler: :slave_lag_throttler  do |m|
+  #
+end
+```
+
+Or to set that as default throttler, use the following (for instance in a Rails initializer):
+```ruby
+Lhm.setup_throttler(:slave_lag_throttler)
+```
 
 ## Table rename strategies
 
@@ -182,22 +183,42 @@ during the run will happen on the new table as well.
 ## Cleaning up after an interrupted Lhm run
 
 If an Lhm migration is interrupted, it may leave behind the temporary tables
-used in the migration. If the migration is re-started, the unexpected presence
-of these tables will cause an error. In this case, `Lhm.cleanup` can be used
-to drop any orphaned Lhm temporary tables.
+and/or triggers used in the migration. If the migration is re-started, the
+unexpected presence of these tables will cause an error.
 
-To see what Lhm tables are found:
+In this case, `Lhm.cleanup` can be used to drop any orphaned Lhm temporary tables or triggers.
+
+To see what Lhm tables/triggers are found:
 
 ```ruby
 Lhm.cleanup
 ```
 
-To remove any Lhm tables found:
+To remove any Lhm tables/triggers found:
 ```ruby
 Lhm.cleanup(true)
 ```
 
+Optionally only remove tables up to a specific Time, if you want to retain previous migrations.
+
+Rails:
+```ruby
+Lhm.cleanup(true, until: 1.day.ago)
+```
+
+Ruby:
+```ruby
+Lhm.cleanup(true, until: Time.now - 86400)
+```
+
 ## Contributing
+
+First, get set up for local development:
+
+    git clone git://github.com/soundcloud/lhm.git
+    cd lhm
+
+To run the tests, follow the instructions on [spec/README](https://github.com/soundcloud/lhm/blob/master/spec/README.md).
 
 We'll check out your contribution if you:
 
@@ -223,4 +244,4 @@ The license is included as LICENSE in this directory.
 [2]: https://github.com/freels/table_migrator
 [3]: http://www.percona.com/doc/percona-toolkit/2.1/pt-online-schema-change.html
 [4]: https://travis-ci.org/soundcloud/lhm
-[5]: https://travis-ci.org/soundcloud/lhm.png?branch=master
+[5]: https://travis-ci.org/soundcloud/lhm.svg?branch=master

@@ -3,7 +3,7 @@
 
 require 'lhm/table'
 require 'lhm/invoker'
-require 'lhm/connection'
+require 'lhm/throttler'
 require 'lhm/version'
 require 'logger'
 
@@ -18,6 +18,9 @@ require 'logger'
 #   end
 #
 module Lhm
+  extend Throttler
+  extend self
+
   DEFAULT_LOGGER_OPTIONS =  { level: Logger::INFO, file: STDOUT }
 
   # Alters a table with the changes described in the block
@@ -36,66 +39,78 @@ module Lhm
   #   Use atomic switch to rename tables (defaults to: true)
   #   If using a version of mysql affected by atomic switch bug, LHM forces user
   #   to set this option (see SqlHelper#supports_atomic_switch?)
-  # @option options [String] :order_column
-  #   Column name to order records by. This column must be unique for every record (defaults to: "id")
   # @yield [Migrator] Yielded Migrator object records the changes
   # @return [Boolean] Returns true if the migration finishes
   # @raise [Error] Raises Lhm::Error in case of a error and aborts the migration
-  def self.change_table(table_name, options = {}, &block)
+  def change_table(table_name, options = {}, &block)
     origin = Table.parse(table_name, connection)
-    invoker = Invoker.new(origin, connection, options)
+    invoker = Invoker.new(origin, connection)
     block.call(invoker.migrator)
     invoker.run(options)
     true
   end
 
-  def self.cleanup(run = false)
-    lhm_tables = connection.select_values("show tables").select do |name|
-      name =~ /^lhm(a|n)_/
+  # Cleanup tables and triggers
+  #
+  # @param [Boolean] run execute now or just display information
+  # @param [Hash] options Optional options to alter cleanup behaviour
+  # @option options [Time] :until
+  #   Filter to only remove tables up to specified time (defaults to: nil)
+  def cleanup(run = false, options = {})
+    lhm_tables = connection.select_values('show tables').select { |name| name =~ /^lhm(a|n)_/ }
+    if options[:until]
+      lhm_tables.select! do |table|
+        table_date_time = Time.strptime(table, 'lhma_%Y_%m_%d_%H_%M_%S')
+        table_date_time <= options[:until]
+      end
     end
-    return true if lhm_tables.empty?
+
+    lhm_triggers = connection.select_values('show triggers').collect do |trigger|
+      trigger.respond_to?(:trigger) ? trigger.trigger : trigger
+    end.select { |name| name =~ /^lhmt/ }
+
     if run
+      lhm_triggers.each do |trigger|
+        connection.execute("drop trigger if exists #{trigger}")
+      end
       lhm_tables.each do |table|
-        connection.execute("drop table #{table}")
+        connection.execute("drop table if exists #{table}")
       end
       true
+    elsif lhm_tables.empty? && lhm_triggers.empty?
+      puts 'Everything is clean. Nothing to do.'
+      true
     else
-      puts "Existing LHM backup tables: #{lhm_tables.join(", ")}."
-      puts "Run Lhm.cleanup(true) to drop them all."
+      puts "Existing LHM backup tables: #{lhm_tables.join(', ')}."
+      puts "Existing LHM triggers: #{lhm_triggers.join(', ')}."
+      puts 'Run Lhm.cleanup(true) to drop them all.'
       false
     end
   end
 
-  def self.setup(adapter)
-    @@adapter = adapter
+  def setup(connection)
+    @@connection = connection
   end
 
-  def self.adapter
-    @@adapter ||=
+  def connection
+    @@connection ||=
       begin
         raise 'Please call Lhm.setup' unless defined?(ActiveRecord)
         ActiveRecord::Base.connection
       end
   end
 
-  def self.logger_params=(params)
-    @@logger_params = params
+  def self.logger=(new_logger)
+    @@logger = new_logger
   end
 
   def self.logger
-    @@logger ||= 
+    @@logger ||=
       begin
-        params = (defined?(@@logger_params) && @@logger_params) ? @@logger_params : DEFAULT_LOGGER_OPTIONS
-        logger = Logger.new(params[:file])
-        logger.level = params[:level]
+        logger = Logger.new(DEFAULT_LOGGER_OPTIONS[:file])
+        logger.level = DEFAULT_LOGGER_OPTIONS[:level]
         logger.formatter = nil
         logger
       end
-  end
-
-  protected
-
-  def self.connection
-    Connection.new(adapter)
   end
 end

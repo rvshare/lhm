@@ -7,132 +7,101 @@ require 'lhm/table'
 require 'lhm/migration'
 require 'lhm/atomic_switcher'
 
-
 describe Lhm::AtomicSwitcher do
   include IntegrationHelper
 
   before(:each) { connect_master! }
 
-  describe "switching" do
+  describe 'switching' do
     before(:each) do
-      @origin      = table_create("origin")
-      @destination = table_create("destination")
-      @migration   = Lhm::Migration.new(@origin, @destination, "id")
-      @connection.execute("SET GLOBAL innodb_lock_wait_timeout=3")
-      @connection.execute("SET GLOBAL lock_wait_timeout=3")
+      Thread.abort_on_exception = true
+      @origin      = table_create('origin')
+      @destination = table_create('destination')
+      @migration   = Lhm::Migration.new(@origin, @destination)
+      Lhm.logger = Logger.new('/dev/null')
+      @connection.execute('SET GLOBAL innodb_lock_wait_timeout=3')
+      @connection.execute('SET GLOBAL lock_wait_timeout=3')
     end
 
-   it "should retry on lock wait timeouts" do
-     begin
-       old_verbose, $VERBOSE = $VERBOSE, nil
-       old_retry_sleep = Lhm::AtomicSwitcher::RETRY_SLEEP_TIME
-       Lhm::AtomicSwitcher::RETRY_SLEEP_TIME = 0.2
+    after(:each) do
+      Thread.abort_on_exception = false
+    end
 
-       mutex = Mutex.new
-       cond = ConditionVariable.new
+    it 'should retry on lock wait timeouts' do
+      skip 'This spec only works with mysql2' unless defined? Mysql2
 
-       locking_thread = Thread.new do 
-         with_per_thread_lhm_connection do |conn|
+      without_verbose do
+        queue = Queue.new
 
-           conn.sql('BEGIN')
-           conn.sql("DELETE from #{@destination.name}")
-           mutex.synchronize { sleep(1); cond.signal }
-           sleep(10)
-           conn.sql('ROLLBACK')
-         end
-       end
+        locking_thread = start_locking_thread(10, queue, "DELETE from #{@destination.name}")
 
-       switching_thread = Thread.new do
-         with_per_thread_lhm_connection do |conn|
-           switcher = Lhm::AtomicSwitcher.new(@migration, conn)
-           mutex.synchronize do
-             cond.wait(mutex)
-             switcher.run
-           end
-           Thread.current[:retries] = switcher.retries
-         end
-       end
+        switching_thread = Thread.new do
+          conn = ar_conn 3306
+          switcher = Lhm::AtomicSwitcher.new(@migration, conn)
+          switcher.retry_sleep_time = 0.2
+          queue.pop
+          switcher.run
+          Thread.current[:retries] = switcher.retries
+        end
 
-       switching_thread.join
-       assert switching_thread[:retries] > 0, "The switcher did not retry"
-     ensure
-       Lhm::AtomicSwitcher::RETRY_SLEEP_TIME = old_retry_sleep
-       $VERBOSE = old_verbose
-     end
-   end
+        switching_thread.join
+        locking_thread.join
+        assert switching_thread[:retries] > 0, 'The switcher did not retry'
+      end
+    end
 
-   it "should give up on lock wait timeouts after MAX_RETRIES" do
-     begin
-       old_verbose, $VERBOSE = $VERBOSE, nil
+    it 'should give up on lock wait timeouts after MAX_RETRIES' do
+      skip 'This spec only works with mysql2' unless defined? Mysql2
 
-       old_retry_sleep = Lhm::AtomicSwitcher::RETRY_SLEEP_TIME
-       old_max_retries = Lhm::AtomicSwitcher::MAX_RETRIES
-       Lhm::AtomicSwitcher::RETRY_SLEEP_TIME = 0
-       Lhm::AtomicSwitcher::MAX_RETRIES = 2
+      without_verbose do
+        queue = Queue.new
+        locking_thread = start_locking_thread(10, queue, "DELETE from #{@destination.name}")
 
-       mutex = Mutex.new
-       cond = ConditionVariable.new
+        switching_thread = Thread.new do
+          conn = ar_conn 3306
 
-       locking_thread = Thread.new do 
-         with_per_thread_lhm_connection do |conn|
+          switcher = Lhm::AtomicSwitcher.new(@migration, conn)
+          switcher.max_retries = 2
+          switcher.retry_sleep_time = 0
+          queue.pop
+          begin
+            switcher.run
+          rescue ActiveRecord::StatementInvalid => error
+            Thread.current[:exception] = error
+          end
+        end
 
-           conn.sql('BEGIN')
-           conn.sql("DELETE from #{@destination.name}")
-           mutex.synchronize { sleep(1); cond.signal }
-           sleep(100)
-           conn.sql('ROLLBACK')
-         end
-       end
+        switching_thread.join
+        locking_thread.join
+        assert switching_thread[:exception].is_a?(ActiveRecord::StatementInvalid)
+      end
+    end
 
-       switching_thread = Thread.new do
-         with_per_thread_lhm_connection do |conn|
-           switcher = Lhm::AtomicSwitcher.new(@migration, conn)
-           mutex.synchronize do
-             cond.wait(mutex)
-             begin
-               switcher.run
-             rescue ActiveRecord::StatementInvalid => error
-               Thread.current[:exception] = error
-
-             end
-           end
-         end
-       end
-
-       switching_thread.join
-       assert switching_thread[:exception].is_a?(ActiveRecord::StatementInvalid)
-     ensure
-       Lhm::AtomicSwitcher::RETRY_SLEEP_TIME = old_retry_sleep
-       Lhm::AtomicSwitcher::MAX_RETRIES = old_max_retries
-       $VERBOSE = old_verbose
-     end
-   end
-
-    it "should raise on non lock wait timeout exceptions" do
+    it 'should raise on non lock wait timeout exceptions' do
       switcher = Lhm::AtomicSwitcher.new(@migration, connection)
-      switcher.send :define_singleton_method, :statements do 
+      switcher.send :define_singleton_method, :statements do
         ['SELECT', '*', 'FROM', 'nonexistent']
       end
-      ->{ switcher.run }.must_raise(ActiveRecord::StatementInvalid)
+      -> { switcher.run }.must_raise(ActiveRecord::StatementInvalid)
     end
 
-    it "rename origin to archive" do
+    it 'rename origin to archive' do
       switcher = Lhm::AtomicSwitcher.new(@migration, connection)
       switcher.run
 
       slave do
         table_exists?(@origin).must_equal true
-        table_read(@migration.archive_name).columns.keys.must_include "origin"
+        table_read(@migration.archive_name).columns.keys.must_include 'origin'
       end
     end
 
-    it "rename destination to origin" do
+    it 'rename destination to origin' do
       switcher = Lhm::AtomicSwitcher.new(@migration, connection)
       switcher.run
 
       slave do
         table_exists?(@destination).must_equal false
-        table_read(@origin.name).columns.keys.must_include "destination"
+        table_read(@origin.name).columns.keys.must_include 'destination'
       end
     end
   end

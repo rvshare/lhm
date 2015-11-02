@@ -83,7 +83,6 @@ module Lhm
       def initialize(host, get_config=nil)
         @host = host
         @connection = client(config(get_config))
-        Lhm.logger.info "Connection for #{@host}: #{@connection.inspect}"
       end
 
       def slave_hosts

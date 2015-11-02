@@ -53,7 +53,7 @@ describe Lhm::Throttler::Slave do
     describe 'with proper config' do
       it "creates a new Mysql2::Client" do
         client_assertion = lambda { |config|
-          assert_equal(config, {:host => 'slave', :username => 'user', :password => 'pw', :database => 'db'})
+          assert_equal(config, {'username' => 'user', 'password' => 'pw', 'database' => 'db', 'host' => 'slave'})
         }
         Mysql2::Client.stub :new, client_assertion do
           Lhm::Throttler::Slave.new('slave', get_config)

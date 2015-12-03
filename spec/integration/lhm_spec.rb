@@ -352,6 +352,18 @@ describe Lhm do
           count_all(:users).must_equal(40)
         end
       end
+
+      it 'should create all tables with "DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC"' do
+        options = { :stride => 10, :throttle => 97, :atomic_switch => false }
+
+        Lhm.change_table(:users, options) do |t|
+          t.add_column(:emoji, "INT(10) DEFAULT '0'")
+        end
+
+        slave do
+          table_read(:users).ddl.must_include('ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC')
+        end
+      end
     end
   end
 end

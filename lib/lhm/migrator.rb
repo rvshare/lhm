@@ -210,6 +210,7 @@ module Lhm
       original    = %{CREATE TABLE `#{ @origin.name }`}
       replacement = %{CREATE TABLE `#{ @origin.destination_name }`}
       stmt = @origin.ddl.gsub(original, replacement)
+        .gsub(/DEFAULT CHARSET=\w*/, "DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC")
       @connection.execute(tagged(stmt))
     end
 

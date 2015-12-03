@@ -15,6 +15,8 @@ module Lhm
 
     attr_reader :name, :statements, :connection, :conditions, :renames
 
+    DEFAULT_CHARSET = "DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC"
+
     def initialize(table, connection = nil)
       @connection = connection
       @origin = table
@@ -209,9 +211,18 @@ module Lhm
     def destination_create
       original    = %{CREATE TABLE `#{ @origin.name }`}
       replacement = %{CREATE TABLE `#{ @origin.destination_name }`}
-      stmt = @origin.ddl.gsub(original, replacement)
-        .gsub(/DEFAULT CHARSET=\w*/, "DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC")
+      stmt = add_utf8mb4_charset(@origin.ddl.gsub(original, replacement))
       @connection.execute(tagged(stmt))
+    end
+
+    def add_utf8mb4_charset(stmt)
+      if stmt.match("DEFAULT CHARSET")
+        stmt.gsub(/DEFAULT CHARSET=\w*/, DEFAULT_CHARSET)
+      elsif stmt.match("CHARSET")
+        stmt.gsub(/CHARSET=\w*/, DEFAULT_CHARSET)
+      else
+        stmt << " #{DEFAULT_CHARSET}"
+      end
     end
 
     def destination_read

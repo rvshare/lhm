@@ -37,7 +37,7 @@ module IntegrationHelper
   def ar_conn(port)
     ActiveRecord::Base.establish_connection(
       :adapter  => defined?(Mysql2) ? 'mysql2' : 'mysql',
-      :host     => '127.0.0.1',
+      :host     => 'localhost',
       :database => 'lhm',
       :username => 'root',
       :port     => port,

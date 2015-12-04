@@ -353,5 +353,33 @@ describe Lhm do
         end
       end
     end
+
+    describe "utf8mb4 support" do
+      def check_if_utf8mb4_enabled(table)
+        options = { :stride => 10, :throttle => 97, :atomic_switch => false }
+
+        Lhm.change_table(table, options) do |t|
+          t.add_column(:emoji, "INT(10) DEFAULT '0'")
+        end
+
+        slave do
+          table_read(table).ddl.must_include('DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC')
+        end
+      end
+
+      it 'should create tables with no charset with utf8mb4' do
+        table_create(:no_charset)
+        check_if_utf8mb4_enabled(:no_charset)
+      end
+
+      it 'should create tables with a charset with utf8mb4' do
+        table_create(:non_default_charset)
+        check_if_utf8mb4_enabled(:non_default_charset)
+      end
+
+      it 'should create tables with a default charset with utf8mb4' do
+        check_if_utf8mb4_enabled(:users)
+      end
+    end
   end
 end

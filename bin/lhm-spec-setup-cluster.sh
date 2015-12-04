@@ -18,19 +18,25 @@ mkdir -p "$basedir/master/data" "$basedir/slave/data"
 
 cat <<-CNF > $basedir/master/my.cnf
 [mysqld]
+log-bin = master-bin
+log-bin-index = master-bin.index
+innodb_large_prefix = 1
+innodb_file_format = Barracuda
+innodb_file_per_table = 1
 pid-file = $basedir/master/mysqld.pid
 socket = $basedir/master/mysqld.sock
 port = $master_port
 log_output = FILE
 log-error = $basedir/master/error.log
 datadir = $basedir/master/data
-log-bin = master-bin
-log-bin-index = master-bin.index
 server-id = 1
 CNF
 
 cat <<-CNF > $basedir/slave/my.cnf
 [mysqld]
+innodb_large_prefix = 1
+innodb_file_format = Barracuda
+innodb_file_per_table = 1
 pid-file = $basedir/slave/mysqld.pid
 socket = $basedir/slave/mysqld.sock
 port = $slave_port

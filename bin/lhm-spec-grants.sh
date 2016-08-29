@@ -21,5 +21,5 @@ echo "show slave status \G" | slave
 echo "grant all privileges on *.* to ''@'localhost'" | master
 echo "grant all privileges on *.* to ''@'localhost'" | slave
 
-echo "create database lhm" | master
+echo "create database if not exists lhm" | master
 echo "create database if not exists lhm" | slave

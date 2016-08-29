@@ -114,8 +114,9 @@ module Lhm
       def query_connection(query, result)
         begin
           @connection.query(query).map { |row| row[result] }
-        rescue Error => e
-          raise Lhm::Error, "Unable to connect and/or query slave to determine slave lag. Migration aborting because of: #{e}"
+        rescue Exception => e
+          Lhm.logger.info "Unable to connect and/or query #{host}: #{e}"
+          0
         end
       end
     end

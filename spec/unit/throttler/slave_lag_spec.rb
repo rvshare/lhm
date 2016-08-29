@@ -70,6 +70,8 @@ describe Lhm::Throttler::Slave do
             [{'Seconds_Behind_Master' => 20}]
           elsif query == Lhm::Throttler::Slave::SQL_SELECT_SLAVE_HOSTS
             [{'host' => '1.1.1.1:80'}]
+          elsif query == 'foo'
+            raise Mysql2::Error.new('error')
           end
         end
       end
@@ -87,6 +89,14 @@ describe Lhm::Throttler::Slave do
     describe "#slave_hosts" do
       it "returns the hosts" do
         assert_equal(['1.1.1.1'], @slave.slave_hosts)
+      end
+    end
+
+    describe "#lag on connection error" do
+      it "returns 0" do
+        result = @slave.send(:query_connection, 'foo', 'bar')
+        assert_send([Lhm.logger, :info, "Unable to connect and/or query slave: error"])
+        assert_equal(0, result)
       end
     end
   end

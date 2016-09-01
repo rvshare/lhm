@@ -78,11 +78,26 @@ describe Lhm::Throttler::Slave do
 
       @slave = Lhm::Throttler::Slave.new('slave', get_config)
       @slave.instance_variable_set(:@connection, Connection)
+
+      class StoppedConnection
+        def self.query(query)
+          [{'Seconds_Behind_Master' => nil}]
+        end
+      end
+
+      @stopped_slave = Lhm::Throttler::Slave.new('stopped_slave', get_config)
+      @stopped_slave.instance_variable_set(:@connection, StoppedConnection)
     end
 
     describe "#lag" do
       it "returns the slave lag" do
-        assert_equal([20], @slave.lag)
+        assert_equal(20, @slave.lag)
+      end
+    end
+
+    describe "#lag with a stopped slave" do
+      it "returns 0 slave lag" do
+        assert_equal(0, @stopped_slave.lag)
       end
     end
 

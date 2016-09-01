@@ -43,7 +43,7 @@ Follow the manual instructions if you want more control over this process.
 
 Setup the dependency gems
 
-    export BUNDLE_GEMFILE=gemfiles/ar-3.2_mysql2.gemfile
+    export BUNDLE_GEMFILE=gemfiles/ar-4.2_mysql2.gemfile
     bundle install
 
 To run specs in slave mode, set the MASTER_SLAVE=1 when running tests:

@@ -68,7 +68,7 @@ module Lhm
       end
 
       def max_current_slave_lag
-        max = slaves.map { |slave| slave.lag }.flatten.push(0).max
+        max = slaves.map { |slave| slave.lag }.push(0).max
         Lhm.logger.info "Max current slave lag: #{max}"
         max
       end
@@ -90,7 +90,7 @@ module Lhm
       end
 
       def lag
-        query_connection(SQL_SELECT_MAX_SLAVE_LAG, 'Seconds_Behind_Master')
+        query_connection(SQL_SELECT_MAX_SLAVE_LAG, 'Seconds_Behind_Master').first.to_i
       end
 
       private
@@ -114,8 +114,9 @@ module Lhm
       def query_connection(query, result)
         begin
           @connection.query(query).map { |row| row[result] }
-        rescue Error => e
-          raise Lhm::Error, "Unable to connect and/or query slave to determine slave lag. Migration aborting because of: #{e}"
+        rescue Mysql2::Error => e
+          Lhm.logger.info "Unable to connect and/or query #{host}: #{e}"
+          0
         end
       end
     end

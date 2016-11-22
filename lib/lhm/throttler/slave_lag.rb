@@ -52,7 +52,7 @@ module Lhm
 
       def get_slaves
         slaves = []
-        if @check_only.nil?
+        if @check_only.nil? or !@check_only.respond_to?(:call)
           slave_hosts = master_slave_hosts
           while slave_hosts.any? do
             host = slave_hosts.pop

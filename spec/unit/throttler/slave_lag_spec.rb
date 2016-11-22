@@ -229,14 +229,31 @@ describe Lhm::Throttler::SlaveLag do
       end
 
       describe 'with the :check_only option' do
-        before do
-          check_only = lambda {{'host' => '1.1.1.3'}}
-          @throttler = Lhm::Throttler::SlaveLag.new :check_only => check_only
+        describe 'with a callable argument' do
+          before do
+            check_only = lambda {{'host' => '1.1.1.3'}}
+            @throttler = Lhm::Throttler::SlaveLag.new :check_only => check_only
+          end
+
+          it 'returns only that single slave' do
+            Lhm::Throttler::Slave.stub :new, @create_slave do
+              assert_equal ['1.1.1.3'], @throttler.send(:get_slaves).map(&:host)
+            end
+          end
         end
 
-        it 'returns only that single slave' do
-          Lhm::Throttler::Slave.stub :new, @create_slave do
-            assert_equal ['1.1.1.3'], @throttler.send(:get_slaves).map(&:host)
+        describe 'with a non-callable argument' do
+          before do
+            @throttler = Lhm::Throttler::SlaveLag.new :check_only => 'I cannot be called'
+            def @throttler.master_slave_hosts
+              ['1.1.1.1', '1.1.1.4']
+            end
+          end
+
+          it 'returns all the slave instances' do
+            Lhm::Throttler::Slave.stub :new, @create_slave do
+              assert_equal(["1.1.1.4", "1.1.1.1", "1.1.1.3", "1.1.1.2"], @throttler.send(:get_slaves).map(&:host))
+            end
           end
         end
       end

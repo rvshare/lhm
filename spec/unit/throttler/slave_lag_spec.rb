@@ -209,17 +209,52 @@ describe Lhm::Throttler::SlaveLag do
           end
         end
 
-        def @throttler.master_slave_hosts
-          ['1.1.1.1', '1.1.1.4']
+        @create_slave = lambda { |host, config|
+          TestSlave.new(host, config)
+        }
+      end
+
+      describe 'without the :check_only option' do
+        before do
+          def @throttler.master_slave_hosts
+            ['1.1.1.1', '1.1.1.4']
+          end
+        end
+
+        it 'returns the slave instances' do
+          Lhm::Throttler::Slave.stub :new, @create_slave do
+            assert_equal(["1.1.1.4", "1.1.1.1", "1.1.1.3", "1.1.1.2"], @throttler.send(:get_slaves).map(&:host))
+          end
         end
       end
 
-      it 'returns the slave instances' do
-        create_slave = lambda { |host, config|
-          TestSlave.new(host, config)
-        }
-        Lhm::Throttler::Slave.stub :new, create_slave do
-          assert_equal(["1.1.1.4", "1.1.1.1", "1.1.1.3", "1.1.1.2"], @throttler.send(:get_slaves).map(&:host))
+      describe 'with the :check_only option' do
+        describe 'with a callable argument' do
+          before do
+            check_only = lambda {{'host' => '1.1.1.3'}}
+            @throttler = Lhm::Throttler::SlaveLag.new :check_only => check_only
+          end
+
+          it 'returns only that single slave' do
+            Lhm::Throttler::Slave.stub :new, @create_slave do
+              assert_equal ['1.1.1.3'], @throttler.send(:get_slaves).map(&:host)
+            end
+          end
+        end
+
+        describe 'with a non-callable argument' do
+          before do
+            @throttler = Lhm::Throttler::SlaveLag.new :check_only => 'I cannot be called'
+            def @throttler.master_slave_hosts
+              ['1.1.1.1', '1.1.1.4']
+            end
+          end
+
+          it 'returns all the slave instances' do
+            Lhm::Throttler::Slave.stub :new, @create_slave do
+              assert_equal(["1.1.1.4", "1.1.1.1", "1.1.1.3", "1.1.1.2"], @throttler.send(:get_slaves).map(&:host))
+            end
+          end
         end
       end
     end

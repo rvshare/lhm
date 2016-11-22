@@ -23,6 +23,7 @@ module Lhm
         @allowed_lag = options[:allowed_lag] || DEFAULT_MAX_ALLOWED_LAG
         @slaves = {}
         @get_config = options[:current_config]
+        @check_only = options[:check_only]
       end
 
       def execute
@@ -51,14 +52,19 @@ module Lhm
 
       def get_slaves
         slaves = []
-        slave_hosts = master_slave_hosts
-        while slave_hosts.any? do
-          host = slave_hosts.pop
-          slave = Slave.new(host, @get_config)
-          if slaves.map(&:host).exclude?(host) && slave.connection
-            slaves << slave
-            slave_hosts.concat(slave.slave_hosts)
+        if @check_only.nil? or !@check_only.respond_to?(:call)
+          slave_hosts = master_slave_hosts
+          while slave_hosts.any? do
+            host = slave_hosts.pop
+            slave = Slave.new(host, @get_config)
+            if slaves.map(&:host).exclude?(host) && slave.connection
+              slaves << slave
+              slave_hosts.concat(slave.slave_hosts)
+            end
           end
+        else
+          slave_config = @check_only.call
+          slaves << Slave.new(slave_config['host'], @get_config)
         end
         slaves
       end

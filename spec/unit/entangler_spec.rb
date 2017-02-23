@@ -59,6 +59,23 @@ describe Lhm::Entangler do
       @entangler.entangle.must_include strip(ddl)
     end
 
+    it 'should retry trigger creation when it hits a lock wait timeout' do
+      logger_mock = Minitest::Mock.new
+
+      connection = Object.new
+      def connection.execute(args)
+        raise Mysql2::Error.new('Lock wait timeout exceeded; try restarting transaction')
+      end
+
+      @entangler.instance_variable_set(:@connection, connection)
+
+      Lhm.stub :logger, logger_mock do
+        10.times { logger_mock.expect(:info, :return_value, [String]) }
+        assert_raises(Mysql2::Error) { @entangler.before }
+      end
+      logger_mock.verify
+    end
+
     describe 'super long table names' do
       before(:each) do
         @origin = Lhm::Table.new('a' * 64)

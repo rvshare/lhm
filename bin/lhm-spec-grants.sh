@@ -7,11 +7,12 @@ slave()  { "$mysqldir"/bin/mysql --protocol=TCP -P $slave_port -uroot; }
 
 # set up master
 
-echo "create user 'slave'@'localhost' identified by 'slave'" | master
+echo "create user if not exists 'slave'@'localhost' identified by 'slave'" | master
 echo "grant replication slave on *.* to 'slave'@'localhost'" | master
 
 # set up slave
 
+echo "stop slave" | slave
 echo "change master to master_user = 'slave', master_password = 'slave', master_port = $master_port, master_host = 'localhost'" | slave
 echo "start slave" | slave
 echo "show slave status \G" | slave

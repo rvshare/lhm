@@ -16,6 +16,11 @@ module Lhm
     attr_reader :name, :statements, :connection, :conditions, :renames
 
     def initialize(table, connection = nil)
+            p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "MIGRATOR.NEW"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       @connection = connection
       @origin = table
       @name = table.destination_name

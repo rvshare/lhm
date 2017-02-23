@@ -11,9 +11,16 @@ module Lhm
 
     attr_reader :connection
 
+    MAX_RETRIES = 10
+
     # Creates entanglement between two tables. All creates, updates and deletes
     # to origin will be repeated on the destination table.
     def initialize(migration, connection = nil)
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "ENTANGLE INIT"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       @intersection = migration.intersection
       @origin = migration.origin
       @destination = migration.destination
@@ -79,13 +86,13 @@ module Lhm
 
     def before
       entangle.each do |stmt|
-        @connection.execute(tagged(stmt))
+        with_retry { @connection.execute(tagged(stmt)) }
       end
     end
 
     def after
       untangle.each do |stmt|
-        @connection.execute(tagged(stmt))
+        with_retry { @connection.execute(tagged(stmt)) }
       end
     end
 
@@ -97,6 +104,28 @@ module Lhm
 
     def strip(sql)
       sql.strip.gsub(/\n */, "\n")
+    end
+
+    def with_retry
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "RETRY CODE HIT"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      begin
+        retries ||= 0
+        yield
+      rescue Mysql2::Error => e
+        if e.message =~ /Lock wait timeout exceeded/
+          retries += 1
+          if retries < MAX_RETRIES
+            sleep 1
+            retry
+          end
+        else
+          raise e
+        end
+      end
     end
   end
 end

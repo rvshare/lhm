@@ -20,11 +20,21 @@ module Lhm
     attr_reader :migrator, :connection
 
     def initialize(origin, connection)
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "LOCAL GEM NEWWWWWWW"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       @connection = connection
       @migrator = Migrator.new(origin, connection)
     end
 
     def set_session_lock_wait_timeouts
+            p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "TIMEOUTS"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       global_innodb_lock_wait_timeout = @connection.select_one("SHOW GLOBAL VARIABLES LIKE 'innodb_lock_wait_timeout'")
       global_lock_wait_timeout = @connection.select_one("SHOW GLOBAL VARIABLES LIKE 'lock_wait_timeout'")
 
@@ -38,11 +48,28 @@ module Lhm
     end
 
     def run(options = {})
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "INVOKER RUN"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      entangler = Entangler.new(migration, @connection)
+      entangler.before
+      entangler.after
       normalize_options(options)
       set_session_lock_wait_timeouts
       migration = @migrator.run
-
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "Entangler.new"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       Entangler.new(migration, @connection).run do
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "Entangler BLOCK"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      p "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         Chunker.new(migration, @connection, options).run
         if options[:atomic_switch]
           AtomicSwitcher.new(migration, @connection).run

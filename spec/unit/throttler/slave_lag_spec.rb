@@ -70,8 +70,6 @@ describe Lhm::Throttler::Slave do
             [{'Seconds_Behind_Master' => 20}]
           elsif query == Lhm::Throttler::Slave::SQL_SELECT_SLAVE_HOSTS
             [{'host' => '1.1.1.1:80'}]
-          elsif query == 'foo'
-            raise Mysql2::Error.new('error')
           end
         end
       end
@@ -108,10 +106,15 @@ describe Lhm::Throttler::Slave do
     end
 
     describe "#lag on connection error" do
-      it "returns 0" do
-        result = @slave.send(:query_connection, 'foo', 'bar')
+      it "logs and returns 0 slave lag" do
+        client = mock()
+        client.stubs(:query).raises(Mysql2::Error, "Can't connect to MySQL server")
+        Lhm::Throttler::Slave.any_instance.stubs(:client).returns(client)
+        Lhm::Throttler::Slave.any_instance.stubs(:config).returns([])
+
+        slave = Lhm::Throttler::Slave.new('slave', get_config)
         assert_send([Lhm.logger, :info, "Unable to connect and/or query slave: error"])
-        assert_equal(0, result)
+        assert_equal(0, slave.lag)
       end
     end
   end
@@ -173,6 +176,22 @@ describe Lhm::Throttler::SlaveLag do
         @throttler.timeout_seconds = Lhm::Throttler::SlaveLag::INITIAL_TIMEOUT * 2
         assert_equal(Lhm::Throttler::SlaveLag::INITIAL_TIMEOUT, @throttler.send(:throttle_seconds))
         assert_equal(Lhm::Throttler::SlaveLag::INITIAL_TIMEOUT, @throttler.send(:throttle_seconds))
+      end
+    end
+  end
+
+  describe '#max_current_slave_lag' do
+    describe 'with MySQL stopped on the slave' do
+      it 'assumes 0 slave lag' do
+        client = mock()
+        client.stubs(:query).raises(Mysql2::Error, "Can't connect to MySQL server")
+        Lhm::Throttler::Slave.any_instance.stubs(:client).returns(client)
+
+        Lhm::Throttler::Slave.any_instance.stubs(:config).returns([])
+        Lhm::Throttler::Slave.any_instance.stubs(:slave_hosts).returns(['1.1.1.2'])
+        @throttler.stubs(:master_slave_hosts).returns(['1.1.1.1'])
+
+        assert_equal 0, @throttler.send(:max_current_slave_lag)
       end
     end
   end

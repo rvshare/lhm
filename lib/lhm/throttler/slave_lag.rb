@@ -122,7 +122,7 @@ module Lhm
           @connection.query(query).map { |row| row[result] }
         rescue Mysql2::Error => e
           Lhm.logger.info "Unable to connect and/or query #{host}: #{e}"
-          0
+          [nil]
         end
       end
     end

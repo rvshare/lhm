@@ -4,6 +4,7 @@
 require 'minitest/autorun'
 require 'minitest/spec'
 require 'minitest/mock'
+require 'mocha/mini_test'
 require 'pathname'
 require 'lhm'
 

@@ -59,6 +59,51 @@ describe Lhm::Entangler do
       @entangler.entangle.must_include strip(ddl)
     end
 
+    it 'should retry trigger creation when it hits a lock wait timeout' do
+      expected_calls = Lhm::Entangler::LOCK_WAIT_RETRIES + 1
+      connection = mock()
+      connection.expects(:execute).times(expected_calls).raises(Mysql2::Error, 'Lock wait timeout exceeded; try restarting transaction')
+
+      @entangler.instance_variable_set(:@connection, connection)
+      assert_raises(Mysql2::Error) { @entangler.before }
+    end
+
+    it 'should not retry trigger creation with other mysql errors' do
+      connection = mock()
+      connection.expects(:execute).once.raises(Mysql2::Error, 'The MySQL server is running with the --read-only option so it cannot execute this statement.')
+
+      @entangler.instance_variable_set(:@connection, connection)
+      assert_raises(Mysql2::Error) { @entangler.before }
+    end
+
+    it 'should succesfully finish after retrying' do
+      connection = mock()
+      connection.stubs(:execute).raises(Mysql2::Error, 'Lock wait timeout exceeded; try restarting transaction').then.returns(true)
+      @entangler.instance_variable_set(:@connection, connection)
+
+      Kernel.expects(:sleep).once
+
+      assert @entangler.before
+    end
+
+    it 'should retry as many times as specified by lock_wait_retries' do
+      connection = mock()
+      connection.expects(:execute).times(6).raises(Mysql2::Error, 'Lock wait timeout exceeded; try restarting transaction')
+      entangler = Lhm::Entangler.new(@migration, connection, {lock_wait_retries: 5})
+
+      assert_raises(Mysql2::Error) { entangler.before }
+    end
+
+    it 'should sleep as long as specified by retry_wait' do
+      connection = mock()
+      connection.stubs(:execute).raises(Mysql2::Error, 'Lock wait timeout exceeded; try restarting transaction').then.returns(true)
+      entangler = Lhm::Entangler.new(@migration, connection, {retry_wait: 3})
+
+      Kernel.expects(:sleep).with(3)
+
+      assert entangler.before
+    end
+
     describe 'super long table names' do
       before(:each) do
         @origin = Lhm::Table.new('a' * 64)

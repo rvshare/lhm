@@ -181,6 +181,17 @@ describe Lhm::Throttler::SlaveLag do
   end
 
   describe '#max_current_slave_lag' do
+    describe 'with multiple slaves' do
+      it 'returns the largest amount of lag' do
+        slave1 = mock()
+        slave2 = mock()
+        slave1.stubs(:lag).returns(5)
+        slave2.stubs(:lag).returns(0)
+        Lhm::Throttler::SlaveLag.any_instance.stubs(:slaves).returns([slave1, slave2])
+        assert_equal 5, @throttler.send(:max_current_slave_lag)
+      end
+    end
+
     describe 'with MySQL stopped on the slave' do
       it 'assumes 0 slave lag' do
         client = mock()

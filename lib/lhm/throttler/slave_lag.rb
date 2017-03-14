@@ -106,7 +106,7 @@ module Lhm
           Lhm.logger.info "Connecting to #{@host} on database: #{config['database']}"
           Mysql2::Client.new(config)
         rescue Mysql2::Error => e
-          Lhm.logger.info "Error conecting to #{@host}: #{e}"
+          Lhm.logger.info "Error connecting to #{@host}: #{e}"
           nil
         end
       end

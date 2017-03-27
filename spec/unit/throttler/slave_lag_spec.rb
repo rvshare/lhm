@@ -43,7 +43,7 @@ describe Lhm::Throttler::Slave do
         test_client = lambda { |config|
           TestMysql2Client.new(config)
         }
-        Mysql2::Client.stub :new, test_client do
+        Mysql2::Client.stubs(:new).returns(test_client) do
           assert_send([Lhm.logger, :info, "Error connecting to slave: connection error"])
           assert_nil(Lhm::Throttler::Slave.new('slave', lambda { {} }).connection)
         end
@@ -55,7 +55,7 @@ describe Lhm::Throttler::Slave do
         client_assertion = lambda { |config|
           assert_equal(config, {'username' => 'user', 'password' => 'pw', 'database' => 'db', 'host' => 'slave'})
         }
-        Mysql2::Client.stub :new, client_assertion do
+        Mysql2::Client.stubs(:new).returns(client_assertion) do
           Lhm::Throttler::Slave.new('slave', get_config)
         end
       end
@@ -252,7 +252,7 @@ describe Lhm::Throttler::SlaveLag do
         end
 
         it 'returns the slave instances' do
-          Lhm::Throttler::Slave.stub :new, @create_slave do
+          Lhm::Throttler::Slave.stubs(:new).returns(@create_slave) do
             assert_equal(["1.1.1.4", "1.1.1.1", "1.1.1.3", "1.1.1.2"], @throttler.send(:get_slaves).map(&:host))
           end
         end
@@ -266,7 +266,7 @@ describe Lhm::Throttler::SlaveLag do
           end
 
           it 'returns only that single slave' do
-            Lhm::Throttler::Slave.stub :new, @create_slave do
+            Lhm::Throttler::Slave.stubs(:new).returns(@create_slave) do
               assert_equal ['1.1.1.3'], @throttler.send(:get_slaves).map(&:host)
             end
           end
@@ -281,7 +281,7 @@ describe Lhm::Throttler::SlaveLag do
           end
 
           it 'returns all the slave instances' do
-            Lhm::Throttler::Slave.stub :new, @create_slave do
+            Lhm::Throttler::Slave.stubs(:new).returns(@create_slave) do
               assert_equal(["1.1.1.4", "1.1.1.1", "1.1.1.3", "1.1.1.2"], @throttler.send(:get_slaves).map(&:host))
             end
           end

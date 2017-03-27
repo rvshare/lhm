@@ -15,7 +15,7 @@ describe Lhm::Chunker do
     @origin = Lhm::Table.new('foo')
     @destination = Lhm::Table.new('bar')
     @migration = Lhm::Migration.new(@origin, @destination)
-    @connection = MiniTest::Mock.new
+    @connection = mock()
     # This is a poor man's stub
     @throttler = Object.new
     def @throttler.run
@@ -35,29 +35,13 @@ describe Lhm::Chunker do
         2
       end
 
-      @connection.expect(:update, 2) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 1 and 2/
-      end
-      @connection.expect(:update, 2) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 3 and 4/
-      end
-      @connection.expect(:update, 2) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 5 and 6/
-      end
-      @connection.expect(:update, 2) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 7 and 8/
-      end
-      @connection.expect(:update, 2) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 9 and 10/
-      end
+      @connection.expects(:update).with(regexp_matches(/between 1 and 2/)).returns(2)
+      @connection.expects(:update).with(regexp_matches(/between 3 and 4/)).returns(2)
+      @connection.expects(:update).with(regexp_matches(/between 5 and 6/)).returns(2)
+      @connection.expects(:update).with(regexp_matches(/between 7 and 8/)).returns(2)
+      @connection.expects(:update).with(regexp_matches(/between 9 and 10/)).returns(2)
 
       @chunker.run
-      @connection.verify
     end
 
     it 'handles stride changes during execution' do
@@ -72,25 +56,12 @@ describe Lhm::Chunker do
         end
       end
 
-      @connection.expect(:update, 2) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 1 and 2/
-      end
-      @connection.expect(:update, 2) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 3 and 5/
-      end
-      @connection.expect(:update, 2) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 6 and 8/
-      end
-      @connection.expect(:update, 2) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 9 and 10/
-      end
+      @connection.expects(:update).with(regexp_matches(/between 1 and 2/)).returns(2)
+      @connection.expects(:update).with(regexp_matches(/between 3 and 5/)).returns(2)
+      @connection.expects(:update).with(regexp_matches(/between 6 and 8/)).returns(2)
+      @connection.expects(:update).with(regexp_matches(/between 9 and 10/)).returns(2)
 
       @chunker.run
-      @connection.verify
     end
 
     it 'correctly copies single record tables' do
@@ -98,47 +69,37 @@ describe Lhm::Chunker do
                                                            :start     => 1,
                                                            :limit     => 1)
 
-      @connection.expect(:update, 1) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /between 1 and 1/
-      end
+      @connection.expects(:update).with(regexp_matches(/between 1 and 1/)).returns(1)
 
       @chunker.run
-      @connection.verify
     end
 
     it 'separates filter conditions from chunking conditions' do
       @chunker = Lhm::Chunker.new(@migration, @connection, :throttler => @throttler,
                                                            :start     => 1,
                                                            :limit     => 2)
-      @connection.expect(:update, 1) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /where \(foo.created_at > '2013-07-10' or foo.baz = 'quux'\) and `foo`/
-      end
+
+      @connection.expects(:update).with(regexp_matches(/where \(foo.created_at > '2013-07-10' or foo.baz = 'quux'\) and `foo`/)).returns(1)
 
       def @migration.conditions
         "where foo.created_at > '2013-07-10' or foo.baz = 'quux'"
       end
 
       @chunker.run
-      @connection.verify
     end
 
     it "doesn't mess with inner join filters" do
       @chunker = Lhm::Chunker.new(@migration, @connection, :throttler => @throttler,
                                                            :start     => 1,
                                                            :limit     => 2)
-      @connection.expect(:update, 1) do |stmt|
-        stmt = stmt.first if stmt.is_a?(Array)
-        stmt =~ /inner join bar on foo.id = bar.foo_id and/
-      end
+
+      @connection.expects(:update).with(regexp_matches(/inner join bar on foo.id = bar.foo_id and/)).returns(1)
 
       def @migration.conditions
         'inner join bar on foo.id = bar.foo_id'
       end
 
       @chunker.run
-      @connection.verify
     end
   end
 end

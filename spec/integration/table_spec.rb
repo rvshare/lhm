@@ -72,7 +72,7 @@ describe Lhm::Table do
       end
 
       it 'should parse column metadata' do
-        @table.columns['username'][:column_default].must_equal nil
+        assert_nil @table.columns['username'][:column_default]
       end
 
       it 'should parse indices' do

@@ -71,9 +71,9 @@ describe Lhm::Chunker do
     it 'should throttle work stride based on slave lag' do
       5.times { |n| execute("insert into origin set id = '#{ (n * n) + 1 }'") }
 
-      printer = MiniTest::Mock.new
-      15.times { printer.expect(:notify, :return_value, [Fixnum, Fixnum]) }
-      printer.expect(:end, :return_value, [])
+      printer = mock()
+      printer.expects(:notify).with(instance_of(Fixnum), instance_of(Fixnum)).twice
+      printer.expects(:end)
 
       throttler = Lhm::Throttler::SlaveLag.new(:stride => 10, :allowed_lag => 0)
       def throttler.max_current_slave_lag
@@ -89,16 +89,15 @@ describe Lhm::Chunker do
       slave do
         count_all(@destination.name).must_equal(5)
       end
-
-      printer.verify
     end
 
     it 'should detect a single slave with no lag in the default configuration' do
       5.times { |n| execute("insert into origin set id = '#{ (n * n) + 1 }'") }
 
-      printer = MiniTest::Mock.new
-      15.times { printer.expect(:notify, :return_value, [Fixnum, Fixnum]) }
-      printer.expect(:end, :return_value, [])
+      printer = mock()
+      printer.expects(:notify).with(instance_of(Fixnum), instance_of(Fixnum)).twice
+      printer.expects(:verify)
+      printer.expects(:end)
 
       throttler = Lhm::Throttler::SlaveLag.new(:stride => 10, :allowed_lag => 0)
 

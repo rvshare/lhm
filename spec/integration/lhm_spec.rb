@@ -119,7 +119,7 @@ describe Lhm do
       end
 
       slave do
-        table_read(:users).columns['comment'].must_equal nil
+        assert_nil table_read(:users).columns['comment']
       end
     end
 

@@ -31,7 +31,7 @@ describe Lhm::AtomicSwitcher do
       skip 'This spec only works with mysql2' unless defined? Mysql2
 
         connection = mock()
-        connection.stubs(:table_exists?).returns(true)
+        connection.stubs(:data_source_exists?).returns(true)
         connection.stubs(:execute).raises(ActiveRecord::StatementInvalid, 'Lock wait timeout exceeded; try restarting transaction.').then.returns(true)
 
         switcher = Lhm::AtomicSwitcher.new(@migration, connection)
@@ -43,7 +43,7 @@ describe Lhm::AtomicSwitcher do
     it 'should give up on lock wait timeouts after MAX_RETRIES' do
       skip 'This spec only works with mysql2' unless defined? Mysql2
         connection = mock()
-        connection.stubs(:table_exists?).returns(true)
+        connection.stubs(:data_source_exists?).returns(true)
         connection.stubs(:execute).twice.raises(ActiveRecord::StatementInvalid, 'Lock wait timeout exceeded; try restarting transaction.')
 
         switcher = Lhm::AtomicSwitcher.new(@migration, connection)
@@ -66,7 +66,7 @@ describe Lhm::AtomicSwitcher do
       switcher.run
 
       slave do
-        table_exists?(@origin).must_equal true
+        data_source_exists?(@origin).must_equal true
         table_read(@migration.archive_name).columns.keys.must_include 'origin'
       end
     end
@@ -76,7 +76,7 @@ describe Lhm::AtomicSwitcher do
       switcher.run
 
       slave do
-        table_exists?(@destination).must_equal false
+        data_source_exists?(@destination).must_equal false
         table_read(@origin.name).columns.keys.must_include 'destination'
       end
     end

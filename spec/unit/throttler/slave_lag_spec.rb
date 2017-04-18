@@ -17,6 +17,18 @@ describe Lhm::Throttler do
         assert_equal(['server.example.com', 'anotherserver.example.com'], Lhm::Throttler.format_hosts(['server.example.com:1234', 'anotherserver.example.com']))
       end
     end
+
+    describe 'with only nil hosts' do
+      it 'returns no hosts' do
+        assert_equal([], Lhm::Throttler.format_hosts([nil]))
+      end
+    end
+
+    describe 'with some nil hosts' do
+      it 'returns the remaining hosts' do
+        assert_equal(['server.example.com'], Lhm::Throttler.format_hosts([nil, 'server.example.com:1234']))
+      end
+    end
   end
 end
 

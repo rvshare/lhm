@@ -2,8 +2,13 @@ module Lhm
   module Throttler
 
     def self.format_hosts(hosts)
-      hosts.map { |host| host.partition(':')[0] }
-        .delete_if { |host| host == 'localhost' || host == '127.0.0.1' }
+      formatted_hosts = []
+      hosts.each do |host|
+        if host && !host.match(/localhost/) && !host.match(/127.0.0.1/)
+          formatted_hosts << host.partition(':')[0]
+        end
+      end
+      formatted_hosts
     end
 
     class SlaveLag

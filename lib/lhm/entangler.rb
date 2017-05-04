@@ -35,9 +35,9 @@ module Lhm
 
     def untangle
       [
-        "drop trigger if exists `#{ trigger(:del) }`",
-        "drop trigger if exists `#{ trigger(:ins) }`",
-        "drop trigger if exists `#{ trigger(:upd) }`"
+        "drop trigger `#{ trigger(:del) }`",
+        "drop trigger `#{ trigger(:ins) }`",
+        "drop trigger `#{ trigger(:upd) }`"
       ]
     end
 
@@ -70,6 +70,10 @@ module Lhm
 
     def trigger(type)
       "lhmt_#{ type }_#{ @origin.name }"[0...64]
+    end
+
+    def expected_triggers
+      [trigger(:ins), trigger(:upd), trigger(:del)]
     end
 
     def validate

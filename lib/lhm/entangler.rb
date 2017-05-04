@@ -35,9 +35,9 @@ module Lhm
 
     def untangle
       [
-        "drop trigger if exists `#{ trigger(:del) }`",
-        "drop trigger if exists `#{ trigger(:ins) }`",
-        "drop trigger if exists `#{ trigger(:upd) }`"
+        "drop trigger `#{ trigger(:del) }`",
+        "drop trigger `#{ trigger(:ins) }`",
+        "drop trigger `#{ trigger(:upd) }`"
       ]
     end
 

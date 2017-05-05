@@ -53,15 +53,6 @@ describe Lhm::Entangler do
       end
     end
 
-    it 'should fail if any triggers do not exist' do
-      exception = assert_raises(ActiveRecord::StatementInvalid) do
-        @entangler.run do
-          execute("drop trigger if exists #{@entangler.trigger(:ins)}")
-        end
-      end
-      assert_match /Trigger does not exist/, exception.message
-    end
-
     it 'should remove entanglement' do
       @entangler.run {}
 

@@ -55,7 +55,7 @@ module Lhm
     end
 
     def triggers_still_exist?(entangler)
-      triggers = connection.execute("SHOW TRIGGERS LIKE '#{migrator.origin.name}'").map {|t| t.first }
+      triggers = connection.select_values("SHOW TRIGGERS LIKE '%#{migrator.origin.name}'").select { |name| name =~ /^lhmt/ }
       triggers.sort == entangler.expected_triggers.sort
     end
 

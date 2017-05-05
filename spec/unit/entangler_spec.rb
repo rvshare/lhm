@@ -122,15 +122,15 @@ describe Lhm::Entangler do
 
   describe 'removal' do
     it 'should remove insert trigger' do
-      @entangler.untangle.must_include('drop trigger `lhmt_ins_origin`')
+      @entangler.untangle.must_include('drop trigger if exists `lhmt_ins_origin`')
     end
 
     it 'should remove update trigger' do
-      @entangler.untangle.must_include('drop trigger `lhmt_upd_origin`')
+      @entangler.untangle.must_include('drop trigger if exists `lhmt_upd_origin`')
     end
 
     it 'should remove delete trigger' do
-      @entangler.untangle.must_include('drop trigger `lhmt_del_origin`')
+      @entangler.untangle.must_include('drop trigger if exists `lhmt_del_origin`')
     end
   end
 end

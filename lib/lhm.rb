@@ -69,23 +69,16 @@ module Lhm
       trigger.respond_to?(:trigger) ? trigger.trigger : trigger
     end.select { |name| name =~ /^lhmt/ }
 
-    if run
-      lhm_triggers.each do |trigger|
-        connection.execute("drop trigger if exists #{trigger}")
-      end
-      lhm_tables.each do |table|
-        connection.execute("drop table if exists #{table}")
-      end
-      true
-    elsif lhm_tables.empty? && lhm_triggers.empty?
-      puts 'Everything is clean. Nothing to do.'
-      true
-    else
-      puts "Existing LHM backup tables: #{lhm_tables.join(', ')}."
-      puts "Existing LHM triggers: #{lhm_triggers.join(', ')}."
-      puts 'Run Lhm.cleanup(true) to drop them all.'
-      false
-    end
+    drop_tables_and_triggers(run, lhm_triggers, lhm_tables)
+  end
+
+  def cleanup_current_run(run, table_name)
+    lhm_table = connection.select_values("show tables like 'lhmn_#{table_name}'")
+    lhm_triggers = connection.select_values("show triggers like '%#{table_name}'").collect do |trigger|
+      trigger.respond_to?(:trigger) ? trigger.trigger : trigger
+    end.select { |name| name =~ /^lhmt/ }
+
+    drop_tables_and_triggers(run, lhm_triggers, lhm_table)
   end
 
   def setup(connection)
@@ -112,5 +105,27 @@ module Lhm
         logger.formatter = nil
         logger
       end
+  end
+
+  private
+
+  def drop_tables_and_triggers(run = false, triggers, tables)
+    if run
+      triggers.each do |trigger|
+        connection.execute("drop trigger if exists #{trigger}")
+      end
+      tables.each do |table|
+        connection.execute("drop table if exists #{table}")
+      end
+      true
+    elsif tables.empty? && triggers.empty?
+      puts 'Everything is clean. Nothing to do.'
+      true
+    else
+      puts "Would drop LHM backup tables: #{tables.join(', ')}."
+      puts "Would drop LHM triggers: #{triggers.join(', ')}."
+      puts 'Run with Lhm.cleanup(true) to drop all LHM triggers and tables, or Lhm.cleanup_current_run(true, table_name) to clean up a specific LHM.'
+      false
+    end
   end
 end

@@ -41,15 +41,22 @@ module Lhm
       normalize_options(options)
       set_session_lock_wait_timeouts
       migration = @migrator.run
+      entangler = Entangler.new(migration, @connection, options)
 
-      Entangler.new(migration, @connection, options).run do
+      entangler.run do
         Chunker.new(migration, @connection, options).run
+        raise "Required triggers do not exist" unless triggers_still_exist?(entangler)
         if options[:atomic_switch]
           AtomicSwitcher.new(migration, @connection).run
         else
           LockedSwitcher.new(migration, @connection).run
         end
       end
+    end
+
+    def triggers_still_exist?(entangler)
+      triggers = connection.select_values("SHOW TRIGGERS LIKE '%#{migrator.origin.name}'").select { |name| name =~ /^lhmt/ }
+      triggers.sort == entangler.expected_triggers.sort
     end
 
     private

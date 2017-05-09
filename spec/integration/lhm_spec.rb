@@ -283,6 +283,47 @@ describe Lhm do
       end
     end
 
+    it 'should raise an exception if the triggers do not exist after copying all rows' do
+      table_create(:users)
+
+      execute("INSERT INTO users (username) VALUES ('a user')")
+
+      Lhm::Invoker.any_instance.stubs(:triggers_still_exist?).returns(false)
+
+      exception = assert_raises do
+        Lhm.change_table(:users) do |t|
+          t.rename_column(:group, :fnord)
+        end
+      end
+
+      assert_match "Required triggers do not exist", exception.message
+    end
+
+    it 'should not perform the table rename if the triggers do not exist after copying all rows' do
+      table_create(:users)
+
+      execute("INSERT INTO users (username) VALUES ('a user')")
+
+      Lhm::Invoker.any_instance.stubs(:triggers_still_exist?).returns(false)
+      Lhm::LockedSwitcher.any_instance.expects(:run).never
+
+      assert_raises do
+        Lhm.change_table(:users) do |t|
+          t.rename_column(:group, :fnord)
+        end
+      end
+
+      slave do
+        table_data = table_read(:users)
+        table_data.columns['fnord'].must_equal(nil)
+        table_read(:users).columns['group'].must_equal({
+          :type => 'varchar(255)',
+          :is_nullable => 'YES',
+          :column_default => 'Superfriends',
+        })
+      end
+    end
+
     it 'works when mysql reserved words are used' do
       table_create(:lines)
       execute("insert into `lines` set id = 1, `between` = 'foo'")

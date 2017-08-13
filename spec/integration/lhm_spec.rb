@@ -232,7 +232,7 @@ describe Lhm do
         table_read(:small_table).columns['id'].must_equal({
           :type => 'int(5)',
           :is_nullable => 'NO',
-          :column_default => '0',
+          :column_default => nil,
         })
       end
     end
@@ -376,7 +376,7 @@ describe Lhm do
 
         delete = Thread.new do
           10.times do |n|
-            execute("delete from users where id = '#{ n + 1 }'")
+            execute("delete from users where reference = '#{ n }'")
             sleep(0.17)
           end
         end

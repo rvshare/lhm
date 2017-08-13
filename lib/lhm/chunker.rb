@@ -27,16 +27,15 @@ module Lhm
     def execute
       return unless @start && @limit
       @next_to_insert = @start
-      while @next_to_insert < @limit || (@start == @limit)
+      while @next_to_insert <= @limit || (@start == @limit)
         stride = @throttler.stride
-        affected_rows = @connection.update(copy(bottom, top(stride)))
-
+        top = upper_id(@next_to_insert, stride)
+        affected_rows = @connection.update(copy(bottom, top))
         if @throttler && affected_rows > 0
           @throttler.run
         end
-
         @printer.notify(bottom, @limit)
-        @next_to_insert = top(stride) + 1
+        @next_to_insert = top + 1
         break if @start == @limit
       end
       @printer.end
@@ -48,8 +47,9 @@ module Lhm
       @next_to_insert
     end
 
-    def top(stride)
-      [(@next_to_insert + stride - 1), @limit].min
+    def upper_id(next_id, stride)
+      top = connection.select_value("select id from `#{ origin_name }` where id >= #{ next_id } order by id limit 1 offset #{ stride - 1}")
+      [top ? top.to_i : @limit, @limit].min
     end
 
     def copy(lowest, highest)

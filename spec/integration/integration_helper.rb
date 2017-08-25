@@ -3,7 +3,14 @@
 require 'test_helper'
 require 'yaml'
 require 'active_support'
-$password = YAML.load_file(File.expand_path(File.dirname(__FILE__)) + '/database.yml')['password'] rescue nil
+
+config = YAML.load_file(File.expand_path(File.dirname(__FILE__)) + '/database.yml') rescue {}
+$lhm_user = config['user'] ||= 'root'
+$password = config['password'] ||= '1234'
+$master_host = config['master_host'] ||= '127.0.0.1'
+$master_port = config['master_port'] ||= 3306
+$slave_host = config['slave_host'] ||= '127.0.0.1'
+$slave_port = config['slave_port'] ||= 3307
 
 require 'lhm/table'
 require 'lhm/sql_helper'
@@ -17,15 +24,15 @@ module IntegrationHelper
   end
 
   def connect_master!
-    connect!(3306)
+    connect!($master_host, $master_port)
   end
 
   def connect_slave!
-    connect!(3307)
+    connect!($slave_host, $slave_host)
   end
 
-  def connect!(port)
-    adapter = ar_conn port
+  def connect!(hostname, port)
+    adapter = ar_conn(hostname, port)
     Lhm.setup(adapter)
     unless defined?(@@cleaned_up)
       Lhm.cleanup(true)
@@ -34,12 +41,12 @@ module IntegrationHelper
     @connection = adapter
   end
 
-  def ar_conn(port)
+  def ar_conn(host, port)
     ActiveRecord::Base.establish_connection(
       :adapter  => defined?(Mysql2) ? 'mysql2' : 'mysql',
-      :host     => '127.0.0.1',
+      :host     => host,
       :database => 'lhm',
-      :username => 'root',
+      :username => $lhm_user,
       :port     => port,
       :password => $password
     )

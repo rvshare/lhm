@@ -28,7 +28,7 @@ module Lhm
   # @param [String, Symbol] table_name Name of the table
   # @param [Hash] options Optional options to alter the chunk / switch behavior
   # @option options [Fixnum] :stride
-  #   Size of a chunk (defaults to: 40,000)
+  #   Size of a chunk (defaults to: 2,000)
   # @option options [Fixnum] :throttle
   #   Time to wait between chunks in milliseconds (defaults to: 100)
   # @option options [Fixnum] :start

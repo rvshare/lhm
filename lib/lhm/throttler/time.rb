@@ -4,7 +4,7 @@ module Lhm
       include Command
 
       DEFAULT_TIMEOUT = 0.1
-      DEFAULT_STRIDE = 40_000
+      DEFAULT_STRIDE = 2_000
 
       attr_accessor :timeout_seconds
       attr_accessor :stride

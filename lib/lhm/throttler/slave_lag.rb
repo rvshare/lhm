@@ -15,7 +15,7 @@ module Lhm
       include Command
 
       INITIAL_TIMEOUT = 0.1
-      DEFAULT_STRIDE = 40_000
+      DEFAULT_STRIDE = 2_000
       DEFAULT_MAX_ALLOWED_LAG = 10
 
       MAX_TIMEOUT = INITIAL_TIMEOUT * 1024

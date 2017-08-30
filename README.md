@@ -114,7 +114,7 @@ to prevent accidental data loss.
 
 Lhm is using a throttle mechanism to read data in your original table.
 
-By default, 40000 rows are read each 0.1 second.
+By default, 2000 rows are read each 0.1 second.
 
 If you want to change that behaviour, you can pass an instance of a throttler with the `throttler` option.
 

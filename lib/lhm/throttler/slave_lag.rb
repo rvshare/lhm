@@ -86,7 +86,7 @@ module Lhm
     end
 
     class Slave
-      SQL_SELECT_SLAVE_HOSTS = "SELECT host FROM information_schema.processlist WHERE command='Binlog Dump'"
+      SQL_SELECT_SLAVE_HOSTS = "SELECT host FROM information_schema.processlist WHERE command LIKE 'Binlog Dump%'"
       SQL_SELECT_MAX_SLAVE_LAG = 'SHOW SLAVE STATUS'
 
       attr_reader :host, :connection

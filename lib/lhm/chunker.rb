@@ -11,11 +11,16 @@ module Lhm
 
     attr_reader :connection
 
+    LOCK_WAIT_RETRIES = 10
+    RETRY_WAIT = 5
+
     # Copy from origin to destination in chunks of size `stride`.
     # Use the `throttler` class to sleep between each stride.
     def initialize(migration, connection = nil, options = {})
       @migration = migration
       @connection = connection
+      @max_retries = options[:lock_wait_retries] || LOCK_WAIT_RETRIES
+      @sleep_duration = options[:retry_wait] || RETRY_WAIT
       if @throttler = options[:throttler]
         @throttler.connection = @connection if @throttler.respond_to?(:connection=)
       end
@@ -30,7 +35,7 @@ module Lhm
       while @next_to_insert <= @limit || (@start == @limit)
         stride = @throttler.stride
         top = upper_id(@next_to_insert, stride)
-        affected_rows = @connection.update(copy(bottom, top))
+        affected_rows = insert(copy(bottom, top))
         if @throttler && affected_rows > 0
           @throttler.run
         end
@@ -42,6 +47,28 @@ module Lhm
     end
 
     private
+
+    def insert(insert_statement)
+      with_retry { @connection.update(insert_statement) }
+    end
+
+    def with_retry
+      begin
+        retries ||= 0
+        yield
+      rescue StandardError => e
+        # Deadlocks: 'Deadlock found when trying to get lock'
+        # Lock wait timeouts: 'Lock wait timeout exceeded'
+        if e.message =~ /Lock wait timeout exceeded|Deadlock found when trying to get lock/ && retries < @max_retries
+          retries += 1
+          Lhm.logger.info("#{e} - retrying #{retries} time(s) in the chunker")
+          Kernel.sleep @sleep_duration
+          retry
+        else
+          raise e
+        end
+      end
+    end
 
     def bottom
       @next_to_insert

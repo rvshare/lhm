@@ -8,6 +8,43 @@ require 'lhm/migration'
 require 'lhm/chunker'
 require 'lhm/throttler'
 
+describe Lhm::ChunkInsert do
+  before(:each) do
+    @origin = Lhm::Table.new('foo')
+    @destination = Lhm::Table.new('bar')
+  end
+
+  describe "#sql" do
+    describe "when migration has no conditions" do
+      before { @migration = Lhm::Migration.new(@origin, @destination) }
+
+      it "makes uses a simple where clause" do
+        assert_equal(
+          Lhm::ChunkInsert.new(@migration, 1, 2).sql,
+          "insert ignore into `bar` () select  from `foo` where `foo`.`id` between 1 and 2"
+        )
+      end
+    end
+
+    describe "when migration has a WHERE condition" do
+      before do
+        @migration = Lhm::Migration.new(
+          @origin,
+          @destination,
+          "where foo.created_at > '2013-07-10' or foo.baz = 'quux'"
+        )
+      end
+
+      it "combines the clause with the chunking WHERE condition" do
+        assert_equal(
+          Lhm::ChunkInsert.new(@migration, 1, 2).sql,
+          "insert ignore into `bar` () select  from `foo` where (foo.created_at > '2013-07-10' or foo.baz = 'quux') and `foo`.`id` between 1 and 2"
+        )
+      end
+    end
+  end
+end
+
 describe Lhm::ChunkFinder do
   before(:each) do
     @origin = Lhm::Table.new('foo')

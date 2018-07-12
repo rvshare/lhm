@@ -5,6 +5,42 @@ require 'lhm/sql_helper'
 require 'lhm/printer'
 
 module Lhm
+  class ChunkInsert
+    def initialize(migration, lowest, highest)
+      @migration = migration
+      @router = Router.new(migration)
+      @lowest = lowest
+      @highest = highest
+    end
+
+    def sql
+      "insert ignore into `#{ @router.destination_name }` (#{ @router.destination_columns }) " \
+      "select #{ @router.origin_columns } from `#{ @router.origin_name }` " \
+      "#{ conditions } `#{ @router.origin_name }`.`id` between #{ @lowest } and #{ @highest }"
+    end
+
+    private
+    # XXX this is extremely brittle and doesn't work when filter contains more
+    # than one SQL clause, e.g. "where ... group by foo". Before making any
+    # more changes here, please consider either:
+    #
+    # 1. Letting users only specify part of defined clauses (i.e. don't allow
+    # `filter` on Migrator to accept both WHERE and INNER JOIN
+    # 2. Changing query building so that it uses structured data rather than
+    # strings until the last possible moment.
+    def conditions
+      if @migration.conditions
+        @migration.conditions.
+          # strip ending paren
+          sub(/\)\Z/, '').
+          # put any where conditions in parens
+          sub(/where\s(\w.*)\Z/, 'where (\\1)') + ' and'
+      else
+        'where'
+      end
+    end
+  end
+
   class Router
     def initialize(migration)
       @migration = migration
@@ -84,7 +120,7 @@ module Lhm
       while @next_to_insert <= @limit || (@start == @limit)
         stride = @throttler.stride
         top = upper_id(@next_to_insert, stride)
-        affected_rows = @connection.update(copy(bottom, top))
+        affected_rows = @connection.update(ChunkInsert.new(@migration, bottom, top).sql)
         if @throttler && affected_rows > 0
           @throttler.run
         end
@@ -104,31 +140,6 @@ module Lhm
     def upper_id(next_id, stride)
       top = connection.select_value("select id from `#{ @router.origin_name }` where id >= #{ next_id } order by id limit 1 offset #{ stride - 1}")
       [top ? top.to_i : @limit, @limit].min
-    end
-
-    def copy(lowest, highest)
-      "insert ignore into `#{ @router.destination_name }` (#{ @router.destination_columns }) " \
-      "select #{ @router.origin_columns } from `#{ @router.origin_name }` " \
-      "#{ conditions } `#{ @router.origin_name }`.`id` between #{ lowest } and #{ highest }"
-    end
-
-    # XXX this is extremely brittle and doesn't work when filter contains more
-    # than one SQL clause, e.g. "where ... group by foo". Before making any
-    # more changes here, please consider either:
-    #
-    # 1. Letting users only specify part of defined clauses (i.e. don't allow
-    # `filter` on Migrator to accept both WHERE and INNER JOIN
-    # 2. Changing query building so that it uses structured data rather than
-    # strings until the last possible moment.
-    def conditions
-      if @migration.conditions
-        @migration.conditions.
-          sub(/\)\Z/, '').
-          # put any where conditions in parens
-          sub(/where\s(\w.*)\Z/, 'where (\\1)') + ' and'
-      else
-        'where'
-      end
     end
 
     def validate

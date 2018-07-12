@@ -5,6 +5,46 @@ require 'lhm/sql_helper'
 require 'lhm/printer'
 
 module Lhm
+  module Origin
+    def origin_name
+      @migration.origin.name
+    end
+
+    def origin_columns
+      @origin_columns ||= @migration.intersection.origin.typed(origin_name)
+    end
+  end
+
+  class ChunkFinder
+    attr_accessor :start, :limit
+
+    def initialize(migration, connection = nil, options = {})
+      @migration = migration
+      @connection = connection
+      @start = options[:start] || select_start
+      @limit = options[:limit] || select_limit
+    end
+
+    def validate
+      if @start > @limit
+        raise ArgumentErrorerror, "impossible chunk options (limit (#{@limit.inspect} must be greater than start (#{@start.inspect})"
+      end
+    end
+
+    private
+    include Origin
+
+    def select_start
+      start = @connection.select_value("select min(id) from `#{ origin_name }`")
+      start ? start.to_i : nil
+    end
+
+    def select_limit
+      limit = @connection.select_value("select max(id) from `#{ origin_name }`")
+      limit ? limit.to_i : nil
+    end
+  end
+
   class Chunker
     include Command
     include SqlHelper
@@ -16,11 +56,12 @@ module Lhm
     def initialize(migration, connection = nil, options = {})
       @migration = migration
       @connection = connection
+      @chunk_finder = ChunkFinder.new(migration, connection, options)
       if @throttler = options[:throttler]
         @throttler.connection = @connection if @throttler.respond_to?(:connection=)
       end
-      @start = options[:start] || select_start
-      @limit = options[:limit] || select_limit
+      @start = @chunk_finder.start
+      @limit = @chunk_finder.limit
       @printer = options[:printer] || Printer::Percentage.new
     end
 
@@ -42,6 +83,7 @@ module Lhm
     end
 
     private
+    include Origin
 
     def bottom
       @next_to_insert
@@ -56,16 +98,6 @@ module Lhm
       "insert ignore into `#{ destination_name }` (#{ destination_columns }) " \
       "select #{ origin_columns } from `#{ origin_name }` " \
       "#{ conditions } `#{ origin_name }`.`id` between #{ lowest } and #{ highest }"
-    end
-
-    def select_start
-      start = connection.select_value("select min(id) from `#{ origin_name }`")
-      start ? start.to_i : nil
-    end
-
-    def select_limit
-      limit = connection.select_value("select max(id) from `#{ origin_name }`")
-      limit ? limit.to_i : nil
     end
 
     # XXX this is extremely brittle and doesn't work when filter contains more
@@ -91,22 +123,12 @@ module Lhm
       @migration.destination.name
     end
 
-    def origin_name
-      @migration.origin.name
-    end
-
-    def origin_columns
-      @origin_columns ||= @migration.intersection.origin.typed(origin_name)
-    end
-
     def destination_columns
       @destination_columns ||= @migration.intersection.destination.joined
     end
 
     def validate
-      if @start && @limit && @start > @limit
-        error('impossible chunk options (limit must be greater than start)')
-      end
+      @chunk_finder.validate
     end
   end
 end

@@ -5,13 +5,25 @@ require 'lhm/sql_helper'
 require 'lhm/printer'
 
 module Lhm
-  module Origin
+  class Router
+    def initialize(migration)
+      @migration = migration
+    end
+
     def origin_name
-      @migration.origin.name
+      @origin_name ||= @migration.origin.name
     end
 
     def origin_columns
       @origin_columns ||= @migration.intersection.origin.typed(origin_name)
+    end
+
+    def destination_name
+      @destination_name ||= @migration.destination.name
+    end
+
+    def destination_columns
+      @destination_columns ||= @migration.intersection.destination.joined
     end
   end
 
@@ -21,6 +33,7 @@ module Lhm
     def initialize(migration, connection = nil, options = {})
       @migration = migration
       @connection = connection
+      @router = Router.new(migration)
       @start = options[:start] || select_start
       @limit = options[:limit] || select_limit
     end
@@ -32,15 +45,14 @@ module Lhm
     end
 
     private
-    include Origin
 
     def select_start
-      start = @connection.select_value("select min(id) from `#{ origin_name }`")
+      start = @connection.select_value("select min(id) from `#{ @router.origin_name }`")
       start ? start.to_i : nil
     end
 
     def select_limit
-      limit = @connection.select_value("select max(id) from `#{ origin_name }`")
+      limit = @connection.select_value("select max(id) from `#{ @router.origin_name }`")
       limit ? limit.to_i : nil
     end
   end
@@ -56,6 +68,7 @@ module Lhm
     def initialize(migration, connection = nil, options = {})
       @migration = migration
       @connection = connection
+      @router = Router.new(migration)
       @chunk_finder = ChunkFinder.new(migration, connection, options)
       if @throttler = options[:throttler]
         @throttler.connection = @connection if @throttler.respond_to?(:connection=)
@@ -83,21 +96,20 @@ module Lhm
     end
 
     private
-    include Origin
 
     def bottom
       @next_to_insert
     end
 
     def upper_id(next_id, stride)
-      top = connection.select_value("select id from `#{ origin_name }` where id >= #{ next_id } order by id limit 1 offset #{ stride - 1}")
+      top = connection.select_value("select id from `#{ @router.origin_name }` where id >= #{ next_id } order by id limit 1 offset #{ stride - 1}")
       [top ? top.to_i : @limit, @limit].min
     end
 
     def copy(lowest, highest)
-      "insert ignore into `#{ destination_name }` (#{ destination_columns }) " \
-      "select #{ origin_columns } from `#{ origin_name }` " \
-      "#{ conditions } `#{ origin_name }`.`id` between #{ lowest } and #{ highest }"
+      "insert ignore into `#{ @router.destination_name }` (#{ @router.destination_columns }) " \
+      "select #{ @router.origin_columns } from `#{ @router.origin_name }` " \
+      "#{ conditions } `#{ @router.origin_name }`.`id` between #{ lowest } and #{ highest }"
     end
 
     # XXX this is extremely brittle and doesn't work when filter contains more
@@ -117,14 +129,6 @@ module Lhm
       else
         'where'
       end
-    end
-
-    def destination_name
-      @migration.destination.name
-    end
-
-    def destination_columns
-      @destination_columns ||= @migration.intersection.destination.joined
     end
 
     def validate

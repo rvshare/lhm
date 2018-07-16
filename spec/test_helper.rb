@@ -1,6 +1,11 @@
 # Copyright (c) 2011 - 2013, SoundCloud Ltd., Rany Keddo, Tobias Bielohlawek, Tobias
 # Schmidt
 
+if ENV['COV']
+  require 'simplecov'
+  SimpleCov.start
+end
+
 require 'minitest/autorun'
 require 'minitest/spec'
 require 'minitest/mock'

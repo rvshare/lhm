@@ -18,7 +18,8 @@ describe Lhm::AtomicSwitcher do
       @origin      = table_create('origin')
       @destination = table_create('destination')
       @migration   = Lhm::Migration.new(@origin, @destination)
-      Lhm.logger = Logger.new('/dev/null')
+      @logs = StringIO.new
+      Lhm.logger = Logger.new(@logs)
       @connection.execute('SET GLOBAL innodb_lock_wait_timeout=3')
       @connection.execute('SET GLOBAL lock_wait_timeout=3')
     end
@@ -27,7 +28,7 @@ describe Lhm::AtomicSwitcher do
       Thread.abort_on_exception = false
     end
 
-    it 'should retry on lock wait timeouts' do
+    it 'should retry and log on lock wait timeouts' do
       connection = mock()
       connection.stubs(:data_source_exists?).returns(true)
       connection.stubs(:execute).raises(ActiveRecord::StatementInvalid, 'Lock wait timeout exceeded; try restarting transaction.').then.returns(true)
@@ -36,6 +37,8 @@ describe Lhm::AtomicSwitcher do
       switcher.retry_sleep_time = 0
 
       assert switcher.run
+      assert_equal(2, @logs.string.split("\n").length)
+      assert @logs.string.split("\n")[1].include?("error=Lock wait timeout exceeded; try restarting transaction. retries=1")
     end
 
     it 'should give up on lock wait timeouts after MAX_RETRIES' do
@@ -56,6 +59,15 @@ describe Lhm::AtomicSwitcher do
         ['SELECT', '*', 'FROM', 'nonexistent']
       end
       -> { switcher.run }.must_raise(ActiveRecord::StatementInvalid)
+    end
+
+    it "should raise when destination doesn't exist" do
+      connection = mock()
+      connection.stubs(:data_source_exists?).returns(false)
+
+      switcher = Lhm::AtomicSwitcher.new(@migration, connection)
+
+      assert_raises(Lhm::Error) { switcher.run }
     end
 
     it 'rename origin to archive' do

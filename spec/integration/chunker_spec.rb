@@ -141,11 +141,10 @@ describe Lhm::Chunker do
 
       if master_slave_mode?
         def throttler.slave_connection(slave)
-          adapter_method = defined?(Mysql2) ? 'mysql2_connection' : 'mysql_connection'
           config = ActiveRecord::Base.connection_pool.spec.config.dup
           config[:host] = slave
           config[:port] = 3307
-          ActiveRecord::Base.send(adapter_method, config)
+          ActiveRecord::Base.send('mysql2_connection', config)
         end
       end
 

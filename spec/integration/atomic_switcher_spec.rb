@@ -28,29 +28,26 @@ describe Lhm::AtomicSwitcher do
     end
 
     it 'should retry on lock wait timeouts' do
-      skip 'This spec only works with mysql2' unless defined? Mysql2
+      connection = mock()
+      connection.stubs(:data_source_exists?).returns(true)
+      connection.stubs(:execute).raises(ActiveRecord::StatementInvalid, 'Lock wait timeout exceeded; try restarting transaction.').then.returns(true)
 
-        connection = mock()
-        connection.stubs(:data_source_exists?).returns(true)
-        connection.stubs(:execute).raises(ActiveRecord::StatementInvalid, 'Lock wait timeout exceeded; try restarting transaction.').then.returns(true)
+      switcher = Lhm::AtomicSwitcher.new(@migration, connection)
+      switcher.retry_sleep_time = 0
 
-        switcher = Lhm::AtomicSwitcher.new(@migration, connection)
-        switcher.retry_sleep_time = 0
-
-        assert switcher.run
+      assert switcher.run
     end
 
     it 'should give up on lock wait timeouts after MAX_RETRIES' do
-      skip 'This spec only works with mysql2' unless defined? Mysql2
-        connection = mock()
-        connection.stubs(:data_source_exists?).returns(true)
-        connection.stubs(:execute).twice.raises(ActiveRecord::StatementInvalid, 'Lock wait timeout exceeded; try restarting transaction.')
+      connection = mock()
+      connection.stubs(:data_source_exists?).returns(true)
+      connection.stubs(:execute).twice.raises(ActiveRecord::StatementInvalid, 'Lock wait timeout exceeded; try restarting transaction.')
 
-        switcher = Lhm::AtomicSwitcher.new(@migration, connection)
-        switcher.max_retries = 2
-        switcher.retry_sleep_time = 0
+      switcher = Lhm::AtomicSwitcher.new(@migration, connection)
+      switcher.max_retries = 2
+      switcher.retry_sleep_time = 0
 
-        assert_raises(ActiveRecord::StatementInvalid) { switcher.run }
+      assert_raises(ActiveRecord::StatementInvalid) { switcher.run }
     end
 
     it 'should raise on non lock wait timeout exceptions' do

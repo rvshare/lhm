@@ -7,7 +7,7 @@ module Lhm
       @highest = highest
     end
 
-    def execute(connection)
+    def insert_and_return_count_of_rows_created(connection)
       connection.update(sql)
     end
 

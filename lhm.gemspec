@@ -20,6 +20,8 @@ Gem::Specification.new do |s|
   s.require_paths = ['lib']
   s.executables   = ['lhm-kill-queue']
 
+  s.add_dependency 'retriable'
+
   s.add_development_dependency 'minitest'
   s.add_development_dependency 'mocha'
   s.add_development_dependency 'rake'

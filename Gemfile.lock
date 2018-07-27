@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     lhm (3.0.0)
+      retriable
 
 GEM
   remote: https://rubygems.org/
@@ -51,6 +52,7 @@ GEM
       http-cookie (>= 1.0.2, < 2.0)
       mime-types (>= 1.16, < 4.0)
       netrc (~> 0.8)
+    retriable (3.1.2)
     simplecov (0.16.1)
       docile (~> 1.1)
       json (>= 1.8, < 3)

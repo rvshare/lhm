@@ -10,10 +10,12 @@ module Lhm
 
     attr_accessor :start, :limit
 
+    def table_empty?
+      start.nil? && limit.nil?
+    end
+
     def validate
-      # We only validate if we have a start and a limit.
-      # The absence of a start and a limit imply an empty table.
-      if start && limit && start > limit
+      if start > limit
         raise ArgumentError, "impossible chunk options (limit (#{limit.inspect} must be greater than start (#{start.inspect})"
       end
     end

@@ -30,7 +30,7 @@ module Lhm
     end
 
     def execute
-      return unless @start && @limit
+      return if @chunk_finder.table_empty?
       @next_to_insert = @start
       while @next_to_insert <= @limit || (@start == @limit)
         stride = @throttler.stride
@@ -58,6 +58,7 @@ module Lhm
     end
 
     def validate
+      return if @chunk_finder.table_empty?
       @chunk_finder.validate
     end
   end

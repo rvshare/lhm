@@ -206,7 +206,6 @@ describe Lhm::Throttler::SlaveLag do
 
     describe 'with MySQL stopped on the slave' do
       it 'assumes 0 slave lag' do
-        skip "Failing test that needs review"
         client = mock()
         client.stubs(:query).raises(Mysql2::Error, "Can't connect to MySQL server")
         Lhm::Throttler::Slave.any_instance.stubs(:client).returns(client)

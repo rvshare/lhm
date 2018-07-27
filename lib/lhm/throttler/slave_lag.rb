@@ -62,7 +62,7 @@ module Lhm
           while slave_hosts.any? do
             host = slave_hosts.pop
             slave = Slave.new(host, @get_config)
-            if slaves.map(&:host).exclude?(host) && slave.connection
+            if !slaves.map(&:host).include?(host) && slave.connection
               slaves << slave
               slave_hosts.concat(slave.slave_hosts)
             end

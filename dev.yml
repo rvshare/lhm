@@ -16,3 +16,4 @@ commands:
   unit: bundle exec rake unit
   int: bundle exec rake integration
   test: bundle exec rake unit && bundle exec rake integration
+  cov: rm -rf coverage; COV=1 bundle exec rake unit && bundle exec rake integration; open coverage/index.html

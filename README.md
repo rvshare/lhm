@@ -229,6 +229,21 @@ dev int # integration tests
 dev test # all tests
 ```
 
+You can run an individual test as follows:
+```
+bundle exec rake unit TEST=spec/integration/atomic_switcher_spec.rb
+```
+
+You can get code coverage reporting for an individual test as follows:
+```
+rm -rf coverage; COV=1 bundle exec rake unit TEST=spec/integration/atomic_switcher_spec.rb; open coverage/index.html # test one file
+```
+
+or get code coverage for all tests:
+```
+dev cov
+```
+
 ### dbdeployer
 The integration tests rely on a master/slave replication setup of MySQL.
 We're using [dbdeployer](https://github.com/datacharmer/dbdeployer) to set this up via `./dbdeployer/install.sh`.

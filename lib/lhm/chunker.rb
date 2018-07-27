@@ -13,6 +13,10 @@ module Lhm
       @highest = highest
     end
 
+    def execute(connection)
+      connection.update(sql)
+    end
+
     def sql
       "insert ignore into `#{ @router.destination_name }` (#{ @router.destination_columns }) " \
       "select #{ @router.origin_columns } from `#{ @router.origin_name }` " \
@@ -120,7 +124,7 @@ module Lhm
       while @next_to_insert <= @limit || (@start == @limit)
         stride = @throttler.stride
         top = upper_id(@next_to_insert, stride)
-        affected_rows = @connection.update(ChunkInsert.new(@migration, bottom, top).sql)
+        affected_rows = ChunkInsert.new(@migration, bottom, top).execute(@connection)
         if @throttler && affected_rows > 0
           @throttler.run
         end

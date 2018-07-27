@@ -16,7 +16,7 @@ module Lhm
     RETRY_SLEEP_TIME = 10
     MAX_RETRIES = 600
 
-    attr_reader :connection, :retries
+    attr_reader :connection
     attr_writer :max_retries, :retry_sleep_time
 
     def initialize(migration, connection = nil)
@@ -24,7 +24,6 @@ module Lhm
       @connection = connection
       @origin = migration.origin
       @destination = migration.destination
-      @retries = 0
       @max_retries = MAX_RETRIES
       @retry_sleep_time = RETRY_SLEEP_TIME
     end
@@ -44,21 +43,25 @@ module Lhm
     private
 
     def execute
-      begin
+      Retriable.retriable(retry_config) do
         @connection.execute(SqlHelper.tagged(atomic_switch))
-      rescue ActiveRecord::StatementInvalid => error
-        if should_retry_exception?(error) && (@retries += 1) < @max_retries
-          sleep(@retry_sleep_time)
-          Lhm.logger.warn "Retrying sql=#{atomic_switch} error=#{error} retries=#{@retries}"
-          retry
-        else
-          raise
-        end
       end
     end
 
-    def should_retry_exception?(error)
-      error.message =~ /Lock wait timeout exceeded/
+    def retry_config
+      {
+        on: {
+          ActiveRecord::StatementInvalid => [/Lock wait timeout exceeded/]
+        },
+        tries: @max_retries, # number of attempts
+        base_interval: @retry_sleep_time, # initial interval in seconds between tries
+        multiplier: 1.5, # each successive interval grows by this factor
+        rand_factor: 0.25, # percentage to randomize the next retry interval time
+        max_elapsed_time: 900, # max total time in seconds that code is allowed to keep being retried
+        on_retry: Proc.new do |exception, try, elapsed_time, next_interval|
+          Lhm.logger.info("#{exception.class}: '#{exception.message}' - #{try} tries in #{elapsed_time} seconds and #{next_interval} seconds until the next try.")
+        end
+      }
     end
   end
 end

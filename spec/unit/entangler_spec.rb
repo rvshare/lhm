@@ -60,7 +60,7 @@ describe Lhm::Entangler do
     end
 
     it 'should retry trigger creation when it hits a lock wait timeout' do
-      expected_calls = Lhm::Entangler::LOCK_WAIT_RETRIES
+      expected_calls = Lhm::Entangler::DEFAULT_MAX_RETRIES
       connection = mock()
       connection.expects(:execute).times(expected_calls).raises(Mysql2::Error, 'Lock wait timeout exceeded; try restarting transaction')
 
@@ -84,10 +84,10 @@ describe Lhm::Entangler do
       assert @entangler.before
     end
 
-    it 'should retry as many times as specified by lock_wait_retries' do
+    it 'should retry as many times as specified by max_retries' do
       connection = mock()
       connection.expects(:execute).times(5).raises(Mysql2::Error, 'Lock wait timeout exceeded; try restarting transaction')
-      @entangler = Lhm::Entangler.new(@migration, connection, {lock_wait_retries: 5, retry_wait: 0})
+      @entangler = Lhm::Entangler.new(@migration, connection, {max_retries: 5, retry_wait: 0})
 
       assert_raises(Mysql2::Error) { @entangler.before }
     end

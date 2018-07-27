@@ -4,6 +4,7 @@
 require 'lhm/command'
 require 'lhm/migration'
 require 'lhm/sql_helper'
+require 'lhm/retry_helper'
 
 module Lhm
   # Switches origin with destination table using an atomic rename.
@@ -13,19 +14,20 @@ module Lhm
   # Lhm::SqlHelper.supports_atomic_switch?.
   class AtomicSwitcher
     include Command
-    RETRY_SLEEP_TIME = 10
-    MAX_RETRIES = 600
 
     attr_reader :connection
-    attr_writer :max_retries, :retry_sleep_time
 
-    def initialize(migration, connection = nil)
+    DEFAULT_MAX_RETRIES = 600
+    DEFAULT_RETRY_WAIT = 10
+    include RetryHelper
+
+    def initialize(migration, connection = nil, options = {})
       @migration = migration
       @connection = connection
       @origin = migration.origin
       @destination = migration.destination
-      @max_retries = MAX_RETRIES
-      @retry_sleep_time = RETRY_SLEEP_TIME
+      @max_retries = options[:max_retries]
+      @retry_wait = options[:retry_wait]
     end
 
     def atomic_switch
@@ -46,22 +48,6 @@ module Lhm
       Retriable.retriable(retry_config) do
         @connection.execute(SqlHelper.tagged(atomic_switch))
       end
-    end
-
-    def retry_config
-      {
-        on: {
-          ActiveRecord::StatementInvalid => [/Lock wait timeout exceeded/]
-        },
-        tries: @max_retries, # number of attempts
-        base_interval: @retry_sleep_time, # initial interval in seconds between tries
-        multiplier: 1.5, # each successive interval grows by this factor
-        rand_factor: 0.25, # percentage to randomize the next retry interval time
-        max_elapsed_time: 900, # max total time in seconds that code is allowed to keep being retried
-        on_retry: Proc.new do |exception, try, elapsed_time, next_interval|
-          Lhm.logger.info("#{exception.class}: '#{exception.message}' - #{try} tries in #{elapsed_time} seconds and #{next_interval} seconds until the next try.")
-        end
-      }
     end
   end
 end

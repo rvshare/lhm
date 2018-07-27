@@ -1,9 +1,9 @@
 # Copyright (c) 2011 - 2013, SoundCloud Ltd., Rany Keddo, Tobias Bielohlawek, Tobias
 # Schmidt
 
-require 'retriable'
 require 'lhm/command'
 require 'lhm/sql_helper'
+require 'lhm/retry_helper'
 
 module Lhm
   class Entangler
@@ -12,8 +12,9 @@ module Lhm
 
     attr_reader :connection
 
-    LOCK_WAIT_RETRIES = 10
-    RETRY_WAIT = 1
+    DEFAULT_MAX_RETRIES = 10
+    DEFAULT_RETRY_WAIT = 1
+    include RetryHelper
 
     # Creates entanglement between two tables. All creates, updates and deletes
     # to origin will be repeated on the destination table.
@@ -22,8 +23,8 @@ module Lhm
       @origin = migration.origin
       @destination = migration.destination
       @connection = connection
-      @max_retries = options[:lock_wait_retries] || LOCK_WAIT_RETRIES
-      @sleep_duration = options[:retry_wait] || RETRY_WAIT
+      @max_retries = options[:max_retries]
+      @retry_wait = options[:retry_wait]
     end
 
     def entangle
@@ -111,22 +112,6 @@ module Lhm
 
     def strip(sql)
       sql.strip.gsub(/\n */, "\n")
-    end
-
-    def retry_config
-      {
-        on: {
-          StandardError => [/Lock wait timeout exceeded/]
-        },
-        tries: @max_retries, # number of attempts
-        base_interval: @sleep_duration, # initial interval in seconds between tries
-        multiplier: 1.5, # each successive interval grows by this factor
-        rand_factor: 0.25, # percentage to randomize the next retry interval time
-        max_elapsed_time: 900, # max total time in seconds that code is allowed to keep being retried
-        on_retry: Proc.new do |exception, try, elapsed_time, next_interval|
-          Lhm.logger.info("#{exception.class}: '#{exception.message}' - #{try} tries in #{elapsed_time} seconds and #{next_interval} seconds until the next try.")
-        end
-      }
     end
   end
 end

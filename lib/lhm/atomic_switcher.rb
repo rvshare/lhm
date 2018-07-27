@@ -29,15 +29,9 @@ module Lhm
       @retry_sleep_time = RETRY_SLEEP_TIME
     end
 
-    def statements
-      atomic_switch
-    end
-
     def atomic_switch
-      [
-        "rename table `#{ @origin.name }` to `#{ @migration.archive_name }`, " \
-        "`#{ @destination.name }` to `#{ @origin.name }`"
-      ]
+      "rename table `#{ @origin.name }` to `#{ @migration.archive_name }`, " \
+      "`#{ @destination.name }` to `#{ @origin.name }`"
     end
 
     def validate
@@ -51,13 +45,11 @@ module Lhm
 
     def execute
       begin
-        statements.each do |stmt|
-          @connection.execute(SqlHelper.tagged(stmt))
-        end
+        @connection.execute(SqlHelper.tagged(atomic_switch))
       rescue ActiveRecord::StatementInvalid => error
         if should_retry_exception?(error) && (@retries += 1) < @max_retries
           sleep(@retry_sleep_time)
-          Lhm.logger.warn "Retrying sql=#{statements} error=#{error} retries=#{@retries}"
+          Lhm.logger.warn "Retrying sql=#{atomic_switch} error=#{error} retries=#{@retries}"
           retry
         else
           raise

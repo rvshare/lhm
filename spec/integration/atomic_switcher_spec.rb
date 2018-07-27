@@ -55,8 +55,8 @@ describe Lhm::AtomicSwitcher do
 
     it 'should raise on non lock wait timeout exceptions' do
       switcher = Lhm::AtomicSwitcher.new(@migration, connection)
-      switcher.send :define_singleton_method, :statements do
-        ['SELECT', '*', 'FROM', 'nonexistent']
+      switcher.send :define_singleton_method, :atomic_switch do
+        'SELECT * FROM nonexistent'
       end
       -> { switcher.run }.must_raise(ActiveRecord::StatementInvalid)
     end

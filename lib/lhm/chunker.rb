@@ -5,30 +5,9 @@ require 'lhm/sql_helper'
 require 'lhm/printer'
 require 'lhm/chunk_insert'
 require 'lhm/chunk_finder'
+require 'lhm/router'
 
 module Lhm
-  class Router
-    def initialize(migration)
-      @migration = migration
-    end
-
-    def origin_name
-      @origin_name ||= @migration.origin.name
-    end
-
-    def origin_columns
-      @origin_columns ||= @migration.intersection.origin.typed(origin_name)
-    end
-
-    def destination_name
-      @destination_name ||= @migration.destination.name
-    end
-
-    def destination_columns
-      @destination_columns ||= @migration.intersection.destination.joined
-    end
-  end
-
   class Chunker
     include Command
     include SqlHelper

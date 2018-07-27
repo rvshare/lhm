@@ -5,7 +5,6 @@ require 'lhm/sql_helper'
 require 'lhm/printer'
 require 'lhm/chunk_insert'
 require 'lhm/chunk_finder'
-require 'lhm/router'
 
 module Lhm
   class Chunker
@@ -19,7 +18,6 @@ module Lhm
     def initialize(migration, connection = nil, options = {})
       @migration = migration
       @connection = connection
-      @router = Router.new(migration)
       @chunk_finder = ChunkFinder.new(migration, connection, options)
       if @throttler = options[:throttler]
         @throttler.connection = @connection if @throttler.respond_to?(:connection=)
@@ -53,7 +51,7 @@ module Lhm
     end
 
     def upper_id(next_id, stride)
-      top = connection.select_value("select id from `#{ @router.origin_name }` where id >= #{ next_id } order by id limit 1 offset #{ stride - 1}")
+      top = connection.select_value("select id from `#{ @migration.origin_name }` where id >= #{ next_id } order by id limit 1 offset #{ stride - 1}")
       [top ? top.to_i : @limit, @limit].min
     end
 

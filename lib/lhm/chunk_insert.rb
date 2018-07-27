@@ -2,7 +2,6 @@ module Lhm
   class ChunkInsert
     def initialize(migration, lowest, highest)
       @migration = migration
-      @router = Router.new(migration)
       @lowest = lowest
       @highest = highest
     end
@@ -12,9 +11,9 @@ module Lhm
     end
 
     def sql
-      "insert ignore into `#{ @router.destination_name }` (#{ @router.destination_columns }) " \
-      "select #{ @router.origin_columns } from `#{ @router.origin_name }` " \
-      "#{ conditions } `#{ @router.origin_name }`.`id` between #{ @lowest } and #{ @highest }"
+      "insert ignore into `#{ @migration.destination_name }` (#{ @migration.destination_columns }) " \
+      "select #{ @migration.origin_columns } from `#{ @migration.origin_name }` " \
+      "#{ conditions } `#{ @migration.origin_name }`.`id` between #{ @lowest } and #{ @highest }"
     end
 
     private

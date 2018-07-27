@@ -27,5 +27,21 @@ module Lhm
     def startstamp
       Timestamp.new(@start)
     end
+
+    def origin_name
+      @origin_name ||= origin.name
+    end
+
+    def origin_columns
+      @origin_columns ||= intersection.origin.typed(origin_name)
+    end
+
+    def destination_name
+      @destination_name ||= destination.name
+    end
+
+    def destination_columns
+      @destination_columns ||= intersection.destination.joined
+    end
   end
 end

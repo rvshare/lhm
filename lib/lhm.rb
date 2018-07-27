@@ -27,13 +27,13 @@ module Lhm
   #
   # @param [String, Symbol] table_name Name of the table
   # @param [Hash] options Optional options to alter the chunk / switch behavior
-  # @option options [Fixnum] :stride
+  # @option options [Integer] :stride
   #   Size of a chunk (defaults to: 2,000)
-  # @option options [Fixnum] :throttle
+  # @option options [Integer] :throttle
   #   Time to wait between chunks in milliseconds (defaults to: 100)
-  # @option options [Fixnum] :start
+  # @option options [Integer] :start
   #   Primary Key position at which to start copying chunks
-  # @option options [Fixnum] :limit
+  # @option options [Integer] :limit
   #   Primary Key position at which to stop copying chunks
   # @option options [Boolean] :atomic_switch
   #   Use atomic switch to rename tables (defaults to: true)

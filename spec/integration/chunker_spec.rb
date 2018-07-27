@@ -51,7 +51,7 @@ describe Lhm::Chunker do
       23.times { |n| execute("insert into origin set id = '#{ n * n + 23 }'") }
 
       printer = MiniTest::Mock.new
-      printer.expect(:notify, :return_value, [Fixnum, Fixnum])
+      printer.expect(:notify, :return_value, [Integer, Integer])
       printer.expect(:end, :return_value, [])
 
       Lhm::Chunker.new(
@@ -88,7 +88,7 @@ describe Lhm::Chunker do
       23.times { |n| execute("insert into origin set id = '#{ 100000 + n * n + 23 }'") }
 
       printer = MiniTest::Mock.new
-      printer.expect(:notify, :return_value, [Fixnum, Fixnum])
+      printer.expect(:notify, :return_value, [Integer, Integer])
       printer.expect(:end, :return_value, [])
 
       Lhm::Chunker.new(
@@ -106,7 +106,7 @@ describe Lhm::Chunker do
       15.times { |n| execute("insert into origin set id = '#{ (n * n) + 1 }'") }
 
       printer = mock()
-      printer.expects(:notify).with(instance_of(Fixnum), instance_of(Fixnum)).twice
+      printer.expects(:notify).with(instance_of(Integer), instance_of(Integer)).twice
       printer.expects(:end)
 
       throttler = Lhm::Throttler::SlaveLag.new(:stride => 10, :allowed_lag => 0)
@@ -129,7 +129,7 @@ describe Lhm::Chunker do
       15.times { |n| execute("insert into origin set id = '#{ (n * n) + 1 }'") }
 
       printer = mock()
-      printer.expects(:notify).with(instance_of(Fixnum), instance_of(Fixnum)).twice
+      printer.expects(:notify).with(instance_of(Integer), instance_of(Integer)).twice
       printer.expects(:verify)
       printer.expects(:end)
 
@@ -141,11 +141,10 @@ describe Lhm::Chunker do
 
       if master_slave_mode?
         def throttler.slave_connection(slave)
-          adapter_method = defined?(Mysql2) ? 'mysql2_connection' : 'mysql_connection'
           config = ActiveRecord::Base.connection_pool.spec.config.dup
           config[:host] = slave
           config[:port] = 3307
-          ActiveRecord::Base.send(adapter_method, config)
+          ActiveRecord::Base.send('mysql2_connection', config)
         end
       end
 

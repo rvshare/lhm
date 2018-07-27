@@ -4,7 +4,7 @@
 require 'minitest/autorun'
 require 'minitest/spec'
 require 'minitest/mock'
-require 'mocha/mini_test'
+require 'mocha/minitest'
 require 'pathname'
 require 'lhm'
 
@@ -13,11 +13,7 @@ $spec = $project.join('spec')
 $fixtures = $spec.join('fixtures')
 
 require 'active_record'
-begin
-  require 'mysql2'
-rescue LoadError
-  require 'mysql'
-end
+require 'mysql2'
 
 logger = Logger.new STDOUT
 logger.level = Logger::WARN

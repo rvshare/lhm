@@ -1,6 +1,7 @@
 # Copyright (c) 2011 - 2013, SoundCloud Ltd., Rany Keddo, Tobias Bielohlawek, Tobias
 # Schmidt
 
+require 'retriable'
 require 'lhm/command'
 require 'lhm/sql_helper'
 
@@ -88,13 +89,17 @@ module Lhm
 
     def before
       entangle.each do |stmt|
-        with_retry { @connection.execute(tagged(stmt)) }
+        Retriable.retriable(retry_config) do
+          @connection.execute(tagged(stmt))
+        end
       end
     end
 
     def after
       untangle.each do |stmt|
-        with_retry { @connection.execute(tagged(stmt)) }
+        Retriable.retriable(retry_config) do
+          @connection.execute(tagged(stmt))
+        end
       end
     end
 
@@ -108,20 +113,20 @@ module Lhm
       sql.strip.gsub(/\n */, "\n")
     end
 
-    def with_retry
-      begin
-        retries ||= 0
-        yield
-      rescue StandardError => e
-        if e.message =~ /Lock wait timeout exceeded/ && retries < @max_retries
-          retries += 1
-          Lhm.logger.info("#{e} - retrying #{retries} time(s)")
-          Kernel.sleep @sleep_duration
-          retry
-        else
-          raise e
+    def retry_config
+      {
+        on: {
+          StandardError => [/Lock wait timeout exceeded/]
+        },
+        tries: @max_retries, # number of attempts
+        base_interval: @sleep_duration, # initial interval in seconds between tries
+        multiplier: 1.5, # each successive interval grows by this factor
+        rand_factor: 0.25, # percentage to randomize the next retry interval time
+        max_elapsed_time: 900, # max total time in seconds that code is allowed to keep being retried
+        on_retry: Proc.new do |exception, try, elapsed_time, next_interval|
+          Lhm.logger.info("#{exception.class}: '#{exception.message}' - #{try} tries in #{elapsed_time} seconds and #{next_interval} seconds until the next try.")
         end
-      end
+      }
     end
   end
 end

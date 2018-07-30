@@ -3,7 +3,6 @@
 
 require 'lhm/command'
 require 'lhm/migration'
-require 'lhm/sql_helper'
 require 'lhm/retry_helper'
 
 module Lhm
@@ -45,9 +44,7 @@ module Lhm
     private
 
     def execute
-      Retriable.retriable(retry_config) do
-        @connection.execute(SqlHelper.tagged(atomic_switch))
-      end
+      execute_with_retries(atomic_switch)
     end
   end
 end

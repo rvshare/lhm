@@ -90,17 +90,13 @@ module Lhm
 
     def before
       entangle.each do |stmt|
-        Retriable.retriable(retry_config) do
-          @connection.execute(tagged(stmt))
-        end
+        execute_with_retries(stmt)
       end
     end
 
     def after
       untangle.each do |stmt|
-        Retriable.retriable(retry_config) do
-          @connection.execute(tagged(stmt))
-        end
+        execute_with_retries(stmt)
       end
     end
 

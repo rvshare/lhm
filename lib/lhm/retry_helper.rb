@@ -1,4 +1,5 @@
 require 'retriable'
+require 'lhm/sql_helper'
 
 module Lhm
   # RetryHelper standardizes the interface for retry behavior in components like
@@ -12,15 +13,21 @@ module Lhm
   # @max_retries
   # @retry_wait
   #
-  # To retry some behavior:
-  # Retriable.retriable(retry_config) do
-  #   @connection.execute(tagged(stmt))
-  # end
+  # To retry some behavior, use `execute_with_retries(statement)`
+  # which assumes `@connection` is available.
   module RetryHelper
     def self.included(base)
       raise(ArgumentError, "#{base} must define DEFAULT_MAX_RETRIES before calling 'include RetryHelper'") unless base.constants.include?(:DEFAULT_MAX_RETRIES)
       raise(ArgumentError, "#{base} must define DEFAULT_RETRY_WAIT before calling 'include RetryHelper'") unless base.constants.include?(:DEFAULT_RETRY_WAIT)
     end
+
+    def execute_with_retries(statement)
+      Retriable.retriable(retry_config) do
+        @connection.execute(SqlHelper.tagged(statement))
+      end
+    end
+
+    private
 
     def retry_config
       {

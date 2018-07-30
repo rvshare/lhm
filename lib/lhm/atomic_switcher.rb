@@ -13,20 +13,19 @@ module Lhm
   # Lhm::SqlHelper.supports_atomic_switch?.
   class AtomicSwitcher
     include Command
+    include RetryHelper
 
     attr_reader :connection
-
-    DEFAULT_MAX_RETRIES = 600
-    DEFAULT_RETRY_WAIT = 10
-    include RetryHelper
 
     def initialize(migration, connection = nil, options = {})
       @migration = migration
       @connection = connection
       @origin = migration.origin
       @destination = migration.destination
-      @max_retries = options[:max_retries]
-      @retry_wait = options[:retry_wait]
+      configure_retry({
+        tries: options[:max_retries] || 600,
+        base_interval: options[:retry_wait] || 10
+      })
     end
 
     def atomic_switch

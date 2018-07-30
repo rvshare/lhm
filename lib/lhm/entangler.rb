@@ -9,12 +9,9 @@ module Lhm
   class Entangler
     include Command
     include SqlHelper
+    include RetryHelper
 
     attr_reader :connection
-
-    DEFAULT_MAX_RETRIES = 10
-    DEFAULT_RETRY_WAIT = 1
-    include RetryHelper
 
     # Creates entanglement between two tables. All creates, updates and deletes
     # to origin will be repeated on the destination table.
@@ -23,8 +20,10 @@ module Lhm
       @origin = migration.origin
       @destination = migration.destination
       @connection = connection
-      @max_retries = options[:max_retries]
-      @retry_wait = options[:retry_wait]
+      configure_retry({
+        tries: options[:max_retries] || 10,
+        base_interval: options[:retry_wait] || 1
+      })
     end
 
     def entangle

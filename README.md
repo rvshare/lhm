@@ -251,6 +251,18 @@ We're using [dbdeployer](https://github.com/datacharmer/dbdeployer) to set this 
 There is a lot in there, and most of time you shouldn't need to work with the nodes directly, but it's good
 to know where to go!
 
+## Releasing new versions:
+This gem is published to Shopify's internal PackageCloud
+
+The procedure to publish a new version:
+
+* Update lhm/version.rb
+* Run bundle install to bump the Gemfile.lock version of the gem
+* Open PR for version bump and merge to master
+* Create release on GitHub with a version number that matches version.rb
+* Visit https://shipit.shopify.io/shopify/lhm/production and deploy
+* See your new version on https://gems.shopify.io/packages/lhm
+
 ## License
 
 The license is included as LICENSE in this directory.

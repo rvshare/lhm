@@ -3,16 +3,15 @@
 
 require 'lhm/command'
 require 'lhm/sql_helper'
+require 'lhm/retry_helper'
 
 module Lhm
   class Entangler
     include Command
     include SqlHelper
+    include RetryHelper
 
     attr_reader :connection
-
-    LOCK_WAIT_RETRIES = 10
-    RETRY_WAIT = 1
 
     # Creates entanglement between two tables. All creates, updates and deletes
     # to origin will be repeated on the destination table.
@@ -21,8 +20,10 @@ module Lhm
       @origin = migration.origin
       @destination = migration.destination
       @connection = connection
-      @max_retries = options[:lock_wait_retries] || LOCK_WAIT_RETRIES
-      @sleep_duration = options[:retry_wait] || RETRY_WAIT
+      configure_retry({
+        tries: options.dig(:retriable, :tries) || 10,
+        base_interval: options.dig(:retriable, :base_interval) || 1
+      })
     end
 
     def entangle
@@ -88,13 +89,13 @@ module Lhm
 
     def before
       entangle.each do |stmt|
-        with_retry { @connection.execute(tagged(stmt)) }
+        execute_with_retries(stmt)
       end
     end
 
     def after
       untangle.each do |stmt|
-        with_retry { @connection.execute(tagged(stmt)) }
+        execute_with_retries(stmt)
       end
     end
 
@@ -106,22 +107,6 @@ module Lhm
 
     def strip(sql)
       sql.strip.gsub(/\n */, "\n")
-    end
-
-    def with_retry
-      begin
-        retries ||= 0
-        yield
-      rescue StandardError => e
-        if e.message =~ /Lock wait timeout exceeded/ && retries < @max_retries
-          retries += 1
-          Lhm.logger.info("#{e} - retrying #{retries} time(s)")
-          Kernel.sleep @sleep_duration
-          retry
-        else
-          raise e
-        end
-      end
     end
   end
 end

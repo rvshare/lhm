@@ -20,6 +20,10 @@ Gem::Specification.new do |s|
   s.require_paths = ['lib']
   s.executables   = ['lhm-kill-queue']
 
+  s.required_ruby_version = '>= 2.3.0'
+
+  s.add_dependency 'retriable'
+
   s.add_development_dependency 'minitest'
   s.add_development_dependency 'mocha'
   s.add_development_dependency 'rake'

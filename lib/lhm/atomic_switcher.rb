@@ -3,7 +3,7 @@
 
 require 'lhm/command'
 require 'lhm/migration'
-require 'lhm/sql_helper'
+require 'lhm/retry_helper'
 
 module Lhm
   # Switches origin with destination table using an atomic rename.
@@ -13,20 +13,19 @@ module Lhm
   # Lhm::SqlHelper.supports_atomic_switch?.
   class AtomicSwitcher
     include Command
-    RETRY_SLEEP_TIME = 10
-    MAX_RETRIES = 600
+    include RetryHelper
 
-    attr_reader :connection, :retries
-    attr_writer :max_retries, :retry_sleep_time
+    attr_reader :connection
 
-    def initialize(migration, connection = nil)
+    def initialize(migration, connection = nil, options = {})
       @migration = migration
       @connection = connection
       @origin = migration.origin
       @destination = migration.destination
-      @retries = 0
-      @max_retries = MAX_RETRIES
-      @retry_sleep_time = RETRY_SLEEP_TIME
+      configure_retry({
+        tries: options.dig(:retriable, :tries) || 600,
+        base_interval: options.dig(:retriable, :base_interval) || 10
+      })
     end
 
     def atomic_switch
@@ -44,21 +43,7 @@ module Lhm
     private
 
     def execute
-      begin
-        @connection.execute(SqlHelper.tagged(atomic_switch))
-      rescue ActiveRecord::StatementInvalid => error
-        if should_retry_exception?(error) && (@retries += 1) < @max_retries
-          sleep(@retry_sleep_time)
-          Lhm.logger.warn "Retrying sql=#{atomic_switch} error=#{error} retries=#{@retries}"
-          retry
-        else
-          raise
-        end
-      end
-    end
-
-    def should_retry_exception?(error)
-      error.message =~ /Lock wait timeout exceeded/
+      execute_with_retries(atomic_switch)
     end
   end
 end

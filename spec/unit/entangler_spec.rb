@@ -61,7 +61,7 @@ describe Lhm::Entangler do
 
     it 'should retry trigger creation when it hits a lock wait timeout' do
       connection = mock()
-      @entangler = Lhm::Entangler.new(@migration, connection, {retry_wait: 0})
+      @entangler = Lhm::Entangler.new(@migration, connection, retriable: {base_interval: 0})
       expected_calls = @entangler.retry_config[:tries]
       connection.expects(:execute).times(expected_calls).raises(Mysql2::Error, 'Lock wait timeout exceeded; try restarting transaction')
 
@@ -72,22 +72,22 @@ describe Lhm::Entangler do
       connection = mock()
       connection.expects(:execute).once.raises(Mysql2::Error, 'The MySQL server is running with the --read-only option so it cannot execute this statement.')
 
-      @entangler = Lhm::Entangler.new(@migration, connection, {retry_wait: 0})
+      @entangler = Lhm::Entangler.new(@migration, connection, retriable: {base_interval: 0})
       assert_raises(Mysql2::Error) { @entangler.before }
     end
 
     it 'should succesfully finish after retrying' do
       connection = mock()
       connection.stubs(:execute).raises(Mysql2::Error, 'Lock wait timeout exceeded; try restarting transaction').then.returns(true)
-      @entangler = Lhm::Entangler.new(@migration, connection, {retry_wait: 0})
+      @entangler = Lhm::Entangler.new(@migration, connection, retriable: {base_interval: 0})
 
       assert @entangler.before
     end
 
-    it 'should retry as many times as specified by max_retries' do
+    it 'should retry as many times as specified by configuration' do
       connection = mock()
       connection.expects(:execute).times(5).raises(Mysql2::Error, 'Lock wait timeout exceeded; try restarting transaction')
-      @entangler = Lhm::Entangler.new(@migration, connection, {max_retries: 5, retry_wait: 0})
+      @entangler = Lhm::Entangler.new(@migration, connection, retriable: {tries: 5, base_interval: 0})
 
       assert_raises(Mysql2::Error) { @entangler.before }
     end

@@ -23,8 +23,8 @@ module Lhm
       @origin = migration.origin
       @destination = migration.destination
       configure_retry({
-        tries: options[:max_retries] || 600,
-        base_interval: options[:retry_wait] || 10
+        tries: options.dig(:retriable, :tries) || 600,
+        base_interval: options.dig(:retriable, :base_interval) || 10
       })
     end
 

@@ -9,8 +9,10 @@ module Lhm
   # which assumes `@connection` is available.
   #
   # `execute_with_retries` expects the caller to invoke `configure_retry` first, providing:
-  # * `max_retries` as an integer
-  # * `retry_wait` as an integer
+  # * `tries` as an integer
+  # * `base_interval` as an integer
+  #
+  # For a full list of configuration options see https://github.com/kamui/retriable
   module RetryHelper
     def execute_with_retries(statement)
       Retriable.retriable(retry_config) do

@@ -33,7 +33,7 @@ describe Lhm::AtomicSwitcher do
       connection.stubs(:data_source_exists?).returns(true)
       connection.stubs(:execute).raises(ActiveRecord::StatementInvalid, 'Lock wait timeout exceeded; try restarting transaction.').then.returns(true)
 
-      switcher = Lhm::AtomicSwitcher.new(@migration, connection, retry_wait: 0)
+      switcher = Lhm::AtomicSwitcher.new(@migration, connection, retriable: {base_interval: 0})
 
       assert switcher.run
       assert_equal(2, @logs.string.split("\n").length)
@@ -43,12 +43,12 @@ describe Lhm::AtomicSwitcher do
       assert actual_message.include?(expected_message), "Expected '#{actual_message}' to include '#{expected_message}'"
     end
 
-    it 'should give up on lock wait timeouts after MAX_RETRIES' do
+    it 'should give up on lock wait timeouts after a configured number of tries' do
       connection = mock()
       connection.stubs(:data_source_exists?).returns(true)
       connection.stubs(:execute).twice.raises(ActiveRecord::StatementInvalid, 'Lock wait timeout exceeded; try restarting transaction.')
 
-      switcher = Lhm::AtomicSwitcher.new(@migration, connection, max_retries: 2, retry_wait: 0)
+      switcher = Lhm::AtomicSwitcher.new(@migration, connection, retriable: {tries: 2, base_interval: 0})
 
       assert_raises(ActiveRecord::StatementInvalid) { switcher.run }
     end

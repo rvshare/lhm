@@ -104,7 +104,7 @@ describe Lhm, 'cleanup' do
         assert_equal "drop trigger if exists lhmt_ins_permissions", output[1]
         assert_equal "drop trigger if exists lhmt_upd_permissions", output[2]
         assert_equal "drop trigger if exists lhmt_del_permissions", output[3]
-        assert_equal "drop table if exists lhmn_permissions", output[4]
+        assert_match(/rename table lhmn_permissions to lhma_[0-9_]*_permissions_failed/, output[4])
         assert_equal 5, output.length
       end
 

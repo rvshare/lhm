@@ -1,3 +1,5 @@
+require 'lhm/timestamp'
+
 module Lhm
   module Cleanup
     class Current
@@ -12,7 +14,7 @@ module Lhm
 
       def execute
         build_statements_for_drop_lhm_triggers_for_origin
-        build_statements_for_drop_lhmn_tables_for_origin
+        build_statements_for_rename_lhmn_tables_for_origin
         if run
           execute_ddls
         else
@@ -38,14 +40,18 @@ module Lhm
         end
       end
 
-      def build_statements_for_drop_lhmn_tables_for_origin
+      def build_statements_for_rename_lhmn_tables_for_origin
         lhmn_tables_for_origin.each do |table|
-          @ddls << "drop table if exists #{table}"
+          @ddls << "rename table #{table} to #{failed_name}"
         end
       end
 
       def lhmn_tables_for_origin
         @lhmn_tables_for_origin ||= connection.select_values("show tables like 'lhmn_#{origin_table_name}'")
+      end
+
+      def failed_name
+        "lhma_#{Timestamp.new(Time.now)}_#{origin_table_name}_failed"
       end
 
       def execute_ddls

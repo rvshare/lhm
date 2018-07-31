@@ -5,24 +5,26 @@ module Lhm
         @run = run
         @origin_table_name = origin_table_name
         @connection = connection
+        @ddls = []
       end
 
-      attr_reader :run, :origin_table_name, :connection
+      attr_reader :run, :origin_table_name, :connection, :ddls
 
       def execute
+        build_statements_for_drop_lhm_triggers_for_origin
+        build_statements_for_drop_lhmn_tables_for_origin
         if run
-          drop_lhm_triggers_for_origin
-          drop_lhmn_tables_for_origin
+          execute_ddls
         else
-          report
+          report_ddls
         end
       end
 
       private
 
-      def drop_lhm_triggers_for_origin
+      def build_statements_for_drop_lhm_triggers_for_origin
         lhm_triggers_for_origin.each do |trigger|
-          connection.execute("drop trigger if exists #{trigger}")
+          @ddls << "drop trigger if exists #{trigger}"
         end
       end
 
@@ -36,9 +38,9 @@ module Lhm
         end
       end
 
-      def drop_lhmn_tables_for_origin
+      def build_statements_for_drop_lhmn_tables_for_origin
         lhmn_tables_for_origin.each do |table|
-          connection.execute("drop table if exists #{table}")
+          @ddls << "drop table if exists #{table}"
         end
       end
 
@@ -46,16 +48,15 @@ module Lhm
         @lhmn_tables_for_origin ||= connection.select_values("show tables like 'lhmn_#{origin_table_name}'")
       end
 
-      def report
-        if lhmn_tables_for_origin.empty? && lhm_triggers_for_origin.empty?
-          puts 'Everything is clean. Nothing to do.'
-          true
-        else
-          puts "Would drop LHM backup tables: #{lhmn_tables_for_origin.join(', ')}."
-          puts "Would drop LHM triggers: #{lhm_triggers_for_origin.join(', ')}."
-          puts 'Run with Lhm.cleanup(true) to drop all LHM triggers and tables, or Lhm.cleanup_current_run(true, table_name) to clean up a specific LHM.'
-          false
+      def execute_ddls
+        ddls.each do |ddl|
+          connection.execute(ddl)
         end
+      end
+
+      def report_ddls
+        puts "The following DDLs would be executed:"
+        ddls.each { |ddl| puts ddl }
       end
     end
   end

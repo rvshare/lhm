@@ -2,6 +2,7 @@
 # Schmidt
 
 require 'lhm/intersection'
+require 'lhm/timestamp'
 
 module Lhm
   class Migration
@@ -24,7 +25,7 @@ module Lhm
     end
 
     def startstamp
-      @start.strftime "%Y_%m_%d_%H_%M_%S_#{ '%03d' % (@start.usec / 1000) }"
+      Timestamp.new(@start)
     end
   end
 end

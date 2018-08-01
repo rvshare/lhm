@@ -5,6 +5,7 @@ require 'lhm/table'
 require 'lhm/invoker'
 require 'lhm/throttler'
 require 'lhm/version'
+require 'lhm/cleanup/current'
 require 'logger'
 
 # Large hadron migrator - online schema change tool
@@ -73,12 +74,7 @@ module Lhm
   end
 
   def cleanup_current_run(run, table_name)
-    lhm_table = connection.select_values("show tables like 'lhmn_#{table_name}'")
-    lhm_triggers = connection.select_values("show triggers like '%#{table_name}'").collect do |trigger|
-      trigger.respond_to?(:trigger) ? trigger.trigger : trigger
-    end.select { |name| name =~ /^lhmt/ }
-
-    drop_tables_and_triggers(run, lhm_triggers, lhm_table)
+    Lhm::Cleanup::Current.new(run, table_name, connection).execute
   end
 
   def setup(connection)

@@ -98,24 +98,25 @@ describe Lhm, 'cleanup' do
         table_rename(:permissions, 'lhmn_permissions')
         output = capture_stdout do
           Lhm.cleanup_current_run(false, 'permissions')
-        end
-        output.must_include('Would drop LHM backup tables')
-        output.must_match(/lhmn_permissions/)
-        output.wont_match(/lhma_[0-9_]*_permissions/)
-        output.wont_match(/lhma_[0-9_]*_users/)
+        end.split("\n")
+
+        assert_equal "The following DDLs would be executed:", output[0]
+        assert_equal "drop trigger if exists lhmt_ins_permissions", output[1]
+        assert_equal "drop trigger if exists lhmt_upd_permissions", output[2]
+        assert_equal "drop trigger if exists lhmt_del_permissions", output[3]
+        assert_match(/rename table lhmn_permissions to lhma_[0-9_]*_permissions_failed/, output[4])
+        assert_equal 5, output.length
       end
 
       it 'should show temporary triggers for the specified table only' do
         output = capture_stdout do
           Lhm.cleanup_current_run(false, 'permissions')
-        end
-        output.must_include('Would drop LHM triggers')
-        output.wont_include('lhmt_ins_users')
-        output.wont_include('lhmt_del_users')
-        output.wont_include('lhmt_upd_users')
-        output.must_include('lhmt_ins_permissions')
-        output.must_include('lhmt_del_permissions')
-        output.must_include('lhmt_upd_permissions')
+        end.split("\n")
+        assert_equal "The following DDLs would be executed:", output[0]
+        assert_equal "drop trigger if exists lhmt_ins_permissions", output[1]
+        assert_equal "drop trigger if exists lhmt_upd_permissions", output[2]
+        assert_equal "drop trigger if exists lhmt_del_permissions", output[3]
+        assert_equal 4, output.length
       end
 
       it 'should delete temporary tables and triggers for the specified table only' do

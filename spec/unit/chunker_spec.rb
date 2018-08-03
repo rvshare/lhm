@@ -115,7 +115,7 @@ describe Lhm::Chunker do
       @connection.expects(:select_value).with(regexp_matches(/where id >= 6 order by id limit 1 offset 1/)).returns(7)
       @connection.expects(:select_value).with(regexp_matches(/where id >= 8 order by id limit 1 offset 1/)).returns(9)
       @connection.expects(:select_value).with(regexp_matches(/where id >= 10 order by id limit 1 offset 1/)).returns(nil)
- 
+
       @connection.expects(:update).with(regexp_matches(/between 2 and 3/)).returns(2)
       @connection.expects(:update).with(regexp_matches(/between 4 and 5/)).returns(2)
       @connection.expects(:update).with(regexp_matches(/between 6 and 7/)).returns(2)
@@ -148,7 +148,7 @@ describe Lhm::Chunker do
       @chunker = Lhm::Chunker.new(@migration, @connection, :throttler => @throttler,
                                                            :start     => 1,
                                                            :limit     => 2)
-      
+
       def @throttler.stride
         2
       end

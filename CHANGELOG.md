@@ -1,3 +1,9 @@
+# 3.1.0
+
+* Unify Entangler and AtomicSwitcher retry interface (https://github.com/Shopify/lhm/pull/39)
+* Remove scripts replaced by dbdeployer (https://github.com/Shopify/lhm/pull/40)
+* Rename lhmn_ tables to lhma_ to avoid IBP stalls (https://github.com/Shopify/lhm/pull/41)
+
 # 3.0.0
 
 * Drop support for throttle and stride options. Use `throttler`, instead:

@@ -256,8 +256,9 @@ This gem is published to Shopify's internal PackageCloud
 
 The procedure to publish a new version:
 
-* Update lhm/version.rb
+* Update `lib/lhm/version.rb`
 * Run bundle install to bump the Gemfile.lock version of the gem
+* Add CHANGELOG entries
 * Open PR for version bump and merge to master
 * Create release on GitHub with a version number that matches version.rb
 * Visit https://shipit.shopify.io/shopify/lhm/production and deploy

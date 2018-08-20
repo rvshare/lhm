@@ -1,13 +1,14 @@
 module Lhm
   class ChunkInsert
-    def initialize(migration, lowest, highest)
+    def initialize(migration, connection, lowest, highest)
       @migration = migration
+      @connection = connection
       @lowest = lowest
       @highest = highest
     end
 
-    def insert_and_return_count_of_rows_created(connection)
-      connection.update(sql)
+    def insert_and_return_count_of_rows_created
+      @connection.update(sql)
     end
 
     def sql

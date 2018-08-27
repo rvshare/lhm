@@ -12,24 +12,20 @@ module Lhm
       @origin = origin
       @destination = destination
       @conditions = conditions
-      @start = time
       @renames = renames
+      @table_name = TableName.new(@origin.name, time)
     end
 
     def archive_name
-      "lhma_#{ startstamp }_#{ @origin.name }"[0...64]
+      @archive_name ||= @table_name.archived
     end
 
     def intersection
       Intersection.new(@origin, @destination, @renames)
     end
 
-    def startstamp
-      Timestamp.new(@start)
-    end
-
     def origin_name
-      @origin_name ||= origin.name
+      @table_name.original
     end
 
     def origin_columns

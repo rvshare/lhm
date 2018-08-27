@@ -5,12 +5,12 @@ module Lhm
     class Current
       def initialize(run, origin_table_name, connection)
         @run = run
-        @origin_table_name = origin_table_name
+        @table_name = TableName.new(origin_table_name)
         @connection = connection
         @ddls = []
       end
 
-      attr_reader :run, :origin_table_name, :connection, :ddls
+      attr_reader :run, :connection, :ddls
 
       def execute
         build_statements_for_drop_lhm_triggers_for_origin
@@ -35,23 +35,19 @@ module Lhm
       end
 
       def all_triggers_for_origin
-        @all_triggers_for_origin ||= connection.select_values("show triggers like '%#{origin_table_name}'").collect do |trigger|
+        @all_triggers_for_origin ||= connection.select_values("show triggers like '%#{@table_name.original}'").collect do |trigger|
           trigger.respond_to?(:trigger) ? trigger.trigger : trigger
         end
       end
 
       def build_statements_for_rename_lhmn_tables_for_origin
         lhmn_tables_for_origin.each do |table|
-          @ddls << "rename table #{table} to #{failed_name}"
+          @ddls << "rename table #{table} to #{@table_name.failed}"
         end
       end
 
       def lhmn_tables_for_origin
-        @lhmn_tables_for_origin ||= connection.select_values("show tables like 'lhmn_#{origin_table_name}'")
-      end
-
-      def failed_name
-        "lhma_#{Timestamp.new(Time.now)}_#{origin_table_name}_failed"
+        @lhmn_tables_for_origin ||= connection.select_values("show tables like '#{@table_name.new}'")
       end
 
       def execute_ddls

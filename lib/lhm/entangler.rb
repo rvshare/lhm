@@ -3,13 +3,12 @@
 
 require 'lhm/command'
 require 'lhm/sql_helper'
-require 'lhm/retry_helper'
+require 'lhm/sql_retry'
 
 module Lhm
   class Entangler
     include Command
     include SqlHelper
-    include RetryHelper
 
     attr_reader :connection
 
@@ -20,10 +19,12 @@ module Lhm
       @origin = migration.origin
       @destination = migration.destination
       @connection = connection
-      configure_retry({
-        tries: options.dig(:retriable, :tries) || 10,
-        base_interval: options.dig(:retriable, :base_interval) || 1
-      })
+      @retry_helper = SqlRetry.new(
+        @connection,
+        {
+          log_prefix: "Entangler"
+        }.merge!(options.fetch(:retriable, {}))
+      )
     end
 
     def entangle
@@ -89,13 +90,17 @@ module Lhm
 
     def before
       entangle.each do |stmt|
-        execute_with_retries(stmt)
+        @retry_helper.with_retries do |retriable_connection|
+          retriable_connection.execute(stmt)
+        end
       end
     end
 
     def after
       untangle.each do |stmt|
-        execute_with_retries(stmt)
+        @retry_helper.with_retries do |retriable_connection|
+          retriable_connection.execute(stmt)
+        end
       end
     end
 

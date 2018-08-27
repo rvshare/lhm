@@ -32,7 +32,10 @@ module Lhm
     def default_retry_config
       {
         on: {
-          StandardError => [/Lock wait timeout exceeded/]
+          StandardError => [
+            /Lock wait timeout exceeded/,
+            /Deadlock found when trying to get lock/,
+          ]
         },
         multiplier: 1, # each successive interval grows by this factor
         base_interval: 1, # the initial interval in seconds between tries.

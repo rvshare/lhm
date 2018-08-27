@@ -2,15 +2,18 @@ require 'retriable'
 require 'lhm/sql_helper'
 
 module Lhm
-  # RetryHelper standardizes the interface for retry behavior in components like
+  # SqlRetry standardizes the interface for retry behavior in components like
   # Entangler, AtomicSwitcher, ChunkerInsert.
   #
-  # If an error includes the message "Lock wait timeout exceeded",
-  # the RetryHelper will retry the SQL command again after about 500ms
-  # for up to one hour.
+  # By default if an error includes the message "Lock wait timeout exceeded", or
+  # "Deadlock found when trying to get lock", SqlRetry will retry again
+  # once the MySQL client returns control to the caller, plus one second.
+  # It will retry a total of 10 times and output to the logger a description
+  # of the retry with error information, retry count, and elapsed time.
   #
-  # This behavior can be modified by calling `configure_retry` with options described in
-  # https://github.com/kamui/retriable
+  # This behavior can be modified by passing `options` that are documented in
+  # https://github.com/kamui/retriable. Additionally, a "log_prefix" option,
+  # which is unique to SqlRetry can be used to prefix log output.
   class SqlRetry
     def initialize(connection, options = {})
       @connection = connection

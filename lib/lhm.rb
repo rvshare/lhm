@@ -1,6 +1,7 @@
 # Copyright (c) 2011 - 2013, SoundCloud Ltd., Rany Keddo, Tobias Bielohlawek, Tobias
 # Schmidt
 
+require 'lhm/table_name'
 require 'lhm/table'
 require 'lhm/invoker'
 require 'lhm/throttler'

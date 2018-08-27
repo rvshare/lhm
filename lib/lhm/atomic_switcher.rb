@@ -3,7 +3,7 @@
 
 require 'lhm/command'
 require 'lhm/migration'
-require 'lhm/retry_helper'
+require 'lhm/sql_retry'
 
 module Lhm
   # Switches origin with destination table using an atomic rename.
@@ -13,7 +13,6 @@ module Lhm
   # Lhm::SqlHelper.supports_atomic_switch?.
   class AtomicSwitcher
     include Command
-    include RetryHelper
 
     attr_reader :connection
 
@@ -22,10 +21,14 @@ module Lhm
       @connection = connection
       @origin = migration.origin
       @destination = migration.destination
-      configure_retry({
-        tries: options.dig(:retriable, :tries) || 600,
-        base_interval: options.dig(:retriable, :base_interval) || 10
-      })
+      @retry_helper = SqlRetry.new(
+        @connection,
+        {
+          on_retry: Proc.new do |exception, try_number, total_elapsed_time, next_interval|
+            Lhm.logger.info("[AtomicSwitcher retry] #{exception.class}: '#{exception.message}' - #{try_number} tries in #{total_elapsed_time} seconds and #{next_interval} seconds until the next try.")
+          end
+        }.merge!(options.fetch(:retriable, {}))
+      )
     end
 
     def atomic_switch
@@ -43,7 +46,9 @@ module Lhm
     private
 
     def execute
-      execute_with_retries(atomic_switch)
+      @retry_helper.with_retries do |retriable_connection|
+        retriable_connection.execute atomic_switch
+      end
     end
   end
 end

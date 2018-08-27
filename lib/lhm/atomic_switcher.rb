@@ -24,9 +24,7 @@ module Lhm
       @retry_helper = SqlRetry.new(
         @connection,
         {
-          on_retry: Proc.new do |exception, try_number, total_elapsed_time, next_interval|
-            Lhm.logger.info("[AtomicSwitcher retry] #{exception.class}: '#{exception.message}' - #{try_number} tries in #{total_elapsed_time} seconds and #{next_interval} seconds until the next try.")
-          end
+          log_prefix: "AtomicSwitcher"
         }.merge!(options.fetch(:retriable, {}))
       )
     end

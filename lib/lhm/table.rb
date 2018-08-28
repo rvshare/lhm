@@ -9,6 +9,7 @@ module Lhm
 
     def initialize(name, pk = 'id', ddl = nil)
       @name = name
+      @table_name = TableName.new(name)
       @columns = {}
       @indices = {}
       @pk = pk
@@ -21,7 +22,7 @@ module Lhm
     end
 
     def destination_name
-      "lhmn_#{ @name }"
+      @destination_name ||= @table_name.new
     end
 
     def self.parse(table_name, connection)

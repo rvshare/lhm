@@ -1,3 +1,8 @@
+# 3.1.1
+
+* Cleanup tables between tests (https://github.com/Shopify/lhm/pull/48)
+* Ensure all table names are less than 64 characters (https://github.com/Shopify/lhm/pull/49)
+
 # 3.1.0
 
 * Unify Entangler and AtomicSwitcher retry interface (https://github.com/Shopify/lhm/pull/39)

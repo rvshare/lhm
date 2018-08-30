@@ -1,13 +1,24 @@
+require 'lhm/sql_retry'
+
 module Lhm
   class ChunkInsert
-    def initialize(migration, lowest, highest)
+    def initialize(migration, connection, lowest, highest, options = {})
       @migration = migration
+      @connection = connection
       @lowest = lowest
       @highest = highest
+      @retry_helper = SqlRetry.new(
+        @connection,
+        {
+          log_prefix: "Chunker Insert"
+        }.merge!(options.fetch(:retriable, {}))
+      )
     end
 
-    def insert_and_return_count_of_rows_created(connection)
-      connection.update(sql)
+    def insert_and_return_count_of_rows_created
+      @retry_helper.with_retries do |retriable_connection|
+        retriable_connection.update sql
+      end
     end
 
     def sql

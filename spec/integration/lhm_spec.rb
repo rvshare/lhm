@@ -247,7 +247,7 @@ describe Lhm do
 
       slave do
         table_data = table_read(:users)
-        table_data.columns['username'].must_equal(nil)
+        assert_nil table_data.columns['username']
         table_read(:users).columns['login'].must_equal({
           :type => 'varchar(255)',
           :is_nullable => 'YES',
@@ -270,7 +270,7 @@ describe Lhm do
 
       slave do
         table_data = table_read(:users)
-        table_data.columns['group'].must_equal(nil)
+        assert_nil table_data.columns['group']
         table_read(:users).columns['fnord'].must_equal({
           :type => 'varchar(255)',
           :is_nullable => 'YES',
@@ -315,7 +315,7 @@ describe Lhm do
 
       slave do
         table_data = table_read(:users)
-        table_data.columns['fnord'].must_equal(nil)
+        assert_nil table_data.columns['fnord']
         table_read(:users).columns['group'].must_equal({
           :type => 'varchar(255)',
           :is_nullable => 'YES',

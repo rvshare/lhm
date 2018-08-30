@@ -22,7 +22,7 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = '>= 2.3.0'
 
-  s.add_dependency 'retriable'
+  s.add_dependency 'retriable', '>= 3.0.0'
 
   s.add_development_dependency 'minitest'
   s.add_development_dependency 'mocha'

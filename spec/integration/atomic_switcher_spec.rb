@@ -36,11 +36,11 @@ describe Lhm::AtomicSwitcher do
       switcher = Lhm::AtomicSwitcher.new(@migration, connection, retriable: {base_interval: 0})
 
       assert switcher.run
-      assert_equal(2, @logs.string.split("\n").length)
-      actual_message = @logs.string.split("\n")[1]
-      expected_message = "Lock wait timeout exceeded; try restarting transaction."
 
-      assert actual_message.include?(expected_message), "Expected '#{actual_message}' to include '#{expected_message}'"
+      log_messages = @logs.string.split("\n")
+      assert_equal(2, log_messages.length)
+      assert log_messages[0].include? "Starting run of class=Lhm::AtomicSwitcher"
+      assert log_messages[1].include? "[AtomicSwitcher] ActiveRecord::StatementInvalid: 'Lock wait timeout exceeded; try restarting transaction.' - 1 tries"
     end
 
     it 'should give up on lock wait timeouts after a configured number of tries' do

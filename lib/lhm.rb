@@ -7,6 +7,7 @@ require 'lhm/invoker'
 require 'lhm/throttler'
 require 'lhm/version'
 require 'lhm/cleanup/current'
+require 'lhm/sql_retry'
 require 'logger'
 
 # Large hadron migrator - online schema change tool

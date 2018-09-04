@@ -258,7 +258,7 @@ The procedure to publish a new version:
 
 * Update `lib/lhm/version.rb`
 * Run bundle install to bump the Gemfile.lock version of the gem
-* Add CHANGELOG entries
+* Add CHANGELOG entries by seeing what has not been shipped yet in https://shipit.shopify.io/shopify/lhm/production
 * Open PR for version bump and merge to master
 * Create release on GitHub with a version number that matches version.rb
 * Visit https://shipit.shopify.io/shopify/lhm/production and deploy

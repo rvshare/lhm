@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    lhm (3.1.1)
+    lhm (3.2.0)
       retriable
 
 GEM

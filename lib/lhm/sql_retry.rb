@@ -35,7 +35,13 @@ module Lhm
     def default_retry_config
       {
         on: {
-          StandardError => [
+          ActiveRecord::LockWaitTimeout => nil,
+          ActiveRecord::Deadlocked => nil,
+          Mysql2::Error => [
+            /Lock wait timeout exceeded/,
+            /Deadlock found when trying to get lock/,
+          ],
+          Exception => [
             /Lock wait timeout exceeded/,
             /Deadlock found when trying to get lock/,
           ]

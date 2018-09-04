@@ -1,3 +1,8 @@
+# 3.2.0 (Sep 4, 2018)
+
+* Fix Slave lag throttler database config (https://github.com/Shopify/lhm/pull/55)
+* Loosen dependency on retriable gem (https://github.com/Shopify/lhm/pull/54)
+
 # 3.1.1
 
 * Cleanup tables between tests (https://github.com/Shopify/lhm/pull/48)

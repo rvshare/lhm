@@ -2,6 +2,7 @@
 
 * Fix Slave lag throttler database config (https://github.com/Shopify/lhm/pull/55)
 * Loosen dependency on retriable gem (https://github.com/Shopify/lhm/pull/54)
+* Overhaul retries for deadlocks, wait timeouts on Chunker, Entangler, and AtomicSwitcher (https://github.com/Shopify/lhm/pull/51)
 
 # 3.1.1
 

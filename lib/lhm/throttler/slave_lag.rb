@@ -91,9 +91,10 @@ module Lhm
 
       attr_reader :host, :connection
 
-      def initialize(host, get_config=nil)
+      def initialize(host, connection_config = nil)
         @host = host
-        @connection = client(config(get_config))
+        @connection_config = prepare_connection_config(connection_config)
+        @connection = client(@connection_config)
       end
 
       def slave_hosts
@@ -108,7 +109,7 @@ module Lhm
 
       def client(config)
         begin
-          Lhm.logger.info "Connecting to #{@host} on database: #{config['database']}"
+          Lhm.logger.info "Connecting to #{@host} on database: #{config[:database]}"
           Mysql2::Client.new(config)
         rescue Mysql2::Error => e
           Lhm.logger.info "Error connecting to #{@host}: #{e}"
@@ -116,9 +117,18 @@ module Lhm
         end
       end
 
-      def config(get_config)
-        config = get_config ? get_config.call : ActiveRecord::Base.connection_pool.spec.config.dup
-        config['host'] = @host
+      def prepare_connection_config(config_proc)
+        config = if config_proc
+          if config_proc.respond_to?(:call) # if we get a proc
+            config_proc.call
+          else
+            raise ArgumentError, "Expected #{config_proc.inspect} to respond to `call`"
+          end
+        else # otherwise default to ActiveRecord provided config
+          ActiveRecord::Base.connection_pool.spec.config.dup
+        end
+        config.deep_symbolize_keys!
+        config[:host] = @host
         config
       end
 

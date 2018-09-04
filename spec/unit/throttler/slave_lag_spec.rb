@@ -36,6 +36,9 @@ describe Lhm::Throttler::Slave do
   include UnitHelper
 
   before :each do
+    @logs = StringIO.new
+    Lhm.logger = Logger.new(@logs)
+
     def get_config
       lambda { {'username' => 'user', 'password' => 'pw', 'database' => 'db'} }
     end
@@ -52,24 +55,36 @@ describe Lhm::Throttler::Slave do
 
     describe 'on connection error' do
       it 'logs and returns nil' do
-        test_client = lambda { |config|
-          TestMysql2Client.new(config)
-        }
-        Mysql2::Client.stubs(:new).returns(test_client) do
-          assert_send([Lhm.logger, :info, "Error connecting to slave: connection error"])
-          assert_nil(Lhm::Throttler::Slave.new('slave', lambda { {} }).connection)
-        end
+        assert_nil(Lhm::Throttler::Slave.new('slave', get_config).connection)
+
+        log_messages = @logs.string.lines
+        assert_equal(2, log_messages.length)
+        assert log_messages[0].include? "Connecting to slave on database: db"
+        assert log_messages[1].include? "Error connecting to slave: Unknown MySQL server host 'slave'"
       end
     end
 
     describe 'with proper config' do
       it "creates a new Mysql2::Client" do
-        client_assertion = lambda { |config|
-          assert_equal(config, {'username' => 'user', 'password' => 'pw', 'database' => 'db', 'host' => 'slave'})
-        }
-        Mysql2::Client.stubs(:new).returns(client_assertion) do
-          Lhm::Throttler::Slave.new('slave', get_config)
-        end
+        expected_config = {username: 'user', password: 'pw', database: 'db', host: 'slave'}
+        Mysql2::Client.stubs(:new).with(expected_config).returns(mock())
+
+        assert Lhm::Throttler::Slave.new('slave', get_config).connection
+      end
+    end
+
+    describe 'with active record config' do
+      it 'logs and creates client' do
+        active_record_config = {username: 'user', password: 'pw', database: 'db'}
+        ActiveRecord::Base.stubs(:connection_pool).returns(stub(spec: stub(config: active_record_config)))
+
+        Mysql2::Client.stubs(:new).returns(mock())
+
+        assert Lhm::Throttler::Slave.new('slave').connection
+
+        log_messages = @logs.string.lines
+        assert_equal(1, log_messages.length)
+        assert log_messages[0].include? "Connecting to slave on database: db"
       end
     end
   end

@@ -108,7 +108,7 @@ module Lhm
 
       def client(config)
         begin
-          Lhm.logger.info "Connecting to #{@host} on database: #{config['database']}"
+          Lhm.logger.info "Connecting to #{@host} on database: #{config[:database]}"
           Mysql2::Client.new(config)
         rescue Mysql2::Error => e
           Lhm.logger.info "Error connecting to #{@host}: #{e}"
@@ -118,7 +118,8 @@ module Lhm
 
       def config(get_config)
         config = get_config ? get_config.call : ActiveRecord::Base.connection_pool.spec.config.dup
-        config['host'] = @host
+        config.deep_symbolize_keys!
+        config[:host] = @host
         config
       end
 

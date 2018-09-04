@@ -39,9 +39,7 @@ describe Lhm::Throttler::Slave do
     @logs = StringIO.new
     Lhm.logger = Logger.new(@logs)
 
-    def get_config
-      lambda { {'username' => 'user', 'password' => 'pw', 'database' => 'db'} }
-    end
+    @dummy_mysql_client_config = lambda { {'username' => 'user', 'password' => 'pw', 'database' => 'db'} }
   end
 
   describe "#client" do
@@ -55,7 +53,7 @@ describe Lhm::Throttler::Slave do
 
     describe 'on connection error' do
       it 'logs and returns nil' do
-        assert_nil(Lhm::Throttler::Slave.new('slave', get_config).connection)
+        assert_nil(Lhm::Throttler::Slave.new('slave', @dummy_mysql_client_config).connection)
 
         log_messages = @logs.string.lines
         assert_equal(2, log_messages.length)
@@ -69,7 +67,7 @@ describe Lhm::Throttler::Slave do
         expected_config = {username: 'user', password: 'pw', database: 'db', host: 'slave'}
         Mysql2::Client.stubs(:new).with(expected_config).returns(mock())
 
-        assert Lhm::Throttler::Slave.new('slave', get_config).connection
+        assert Lhm::Throttler::Slave.new('slave', @dummy_mysql_client_config).connection
       end
     end
 
@@ -101,7 +99,7 @@ describe Lhm::Throttler::Slave do
         end
       end
 
-      @slave = Lhm::Throttler::Slave.new('slave', get_config)
+      @slave = Lhm::Throttler::Slave.new('slave', @dummy_mysql_client_config)
       @slave.instance_variable_set(:@connection, Connection)
 
       class StoppedConnection
@@ -110,7 +108,7 @@ describe Lhm::Throttler::Slave do
         end
       end
 
-      @stopped_slave = Lhm::Throttler::Slave.new('stopped_slave', get_config)
+      @stopped_slave = Lhm::Throttler::Slave.new('stopped_slave', @dummy_mysql_client_config)
       @stopped_slave.instance_variable_set(:@connection, StoppedConnection)
     end
 
@@ -139,7 +137,7 @@ describe Lhm::Throttler::Slave do
         Lhm::Throttler::Slave.any_instance.stubs(:client).returns(client)
         Lhm::Throttler::Slave.any_instance.stubs(:config).returns([])
 
-        slave = Lhm::Throttler::Slave.new('slave', get_config)
+        slave = Lhm::Throttler::Slave.new('slave', @dummy_mysql_client_config)
         assert_send([Lhm.logger, :info, "Unable to connect and/or query slave: error"])
         assert_equal(0, slave.lag)
       end
@@ -225,7 +223,7 @@ describe Lhm::Throttler::SlaveLag do
         client.stubs(:query).raises(Mysql2::Error, "Can't connect to MySQL server")
         Lhm::Throttler::Slave.any_instance.stubs(:client).returns(client)
 
-        Lhm::Throttler::Slave.any_instance.stubs(:config).returns([])
+        Lhm::Throttler::Slave.any_instance.stubs(:prepare_connection_config).returns([])
         Lhm::Throttler::Slave.any_instance.stubs(:slave_hosts).returns(['1.1.1.2'])
         @throttler.stubs(:master_slave_hosts).returns(['1.1.1.1'])
 
@@ -252,7 +250,7 @@ describe Lhm::Throttler::SlaveLag do
         class TestSlave
           attr_reader :host, :connection
 
-          def initialize(host, get_config)
+          def initialize(host, _)
             @host = host
             @connection = 'conn' if @host
           end

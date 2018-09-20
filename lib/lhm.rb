@@ -1,10 +1,13 @@
 # Copyright (c) 2011 - 2013, SoundCloud Ltd., Rany Keddo, Tobias Bielohlawek, Tobias
 # Schmidt
 
+require 'lhm/table_name'
 require 'lhm/table'
 require 'lhm/invoker'
 require 'lhm/throttler'
 require 'lhm/version'
+require 'lhm/cleanup/current'
+require 'lhm/sql_retry'
 require 'logger'
 
 # Large hadron migrator - online schema change tool
@@ -27,13 +30,13 @@ module Lhm
   #
   # @param [String, Symbol] table_name Name of the table
   # @param [Hash] options Optional options to alter the chunk / switch behavior
-  # @option options [Fixnum] :stride
+  # @option options [Integer] :stride
   #   Size of a chunk (defaults to: 2,000)
-  # @option options [Fixnum] :throttle
+  # @option options [Integer] :throttle
   #   Time to wait between chunks in milliseconds (defaults to: 100)
-  # @option options [Fixnum] :start
+  # @option options [Integer] :start
   #   Primary Key position at which to start copying chunks
-  # @option options [Fixnum] :limit
+  # @option options [Integer] :limit
   #   Primary Key position at which to stop copying chunks
   # @option options [Boolean] :atomic_switch
   #   Use atomic switch to rename tables (defaults to: true)
@@ -73,12 +76,7 @@ module Lhm
   end
 
   def cleanup_current_run(run, table_name)
-    lhm_table = connection.select_values("show tables like 'lhmn_#{table_name}'")
-    lhm_triggers = connection.select_values("show triggers like '%#{table_name}'").collect do |trigger|
-      trigger.respond_to?(:trigger) ? trigger.trigger : trigger
-    end.select { |name| name =~ /^lhmt/ }
-
-    drop_tables_and_triggers(run, lhm_triggers, lhm_table)
+    Lhm::Cleanup::Current.new(run, table_name, connection).execute
   end
 
   def setup(connection)

@@ -1,3 +1,20 @@
+# 3.2.0 (Sep 4, 2018)
+
+* Fix Slave lag throttler database config (https://github.com/Shopify/lhm/pull/55)
+* Loosen dependency on retriable gem (https://github.com/Shopify/lhm/pull/54)
+* Overhaul retries for deadlocks, wait timeouts on Chunker, Entangler, and AtomicSwitcher (https://github.com/Shopify/lhm/pull/51)
+
+# 3.1.1
+
+* Cleanup tables between tests (https://github.com/Shopify/lhm/pull/48)
+* Ensure all table names are less than 64 characters (https://github.com/Shopify/lhm/pull/49)
+
+# 3.1.0
+
+* Unify Entangler and AtomicSwitcher retry interface (https://github.com/Shopify/lhm/pull/39)
+* Remove scripts replaced by dbdeployer (https://github.com/Shopify/lhm/pull/40)
+* Rename lhmn_ tables to lhma_ to avoid IBP stalls (https://github.com/Shopify/lhm/pull/41)
+
 # 3.0.0
 
 * Drop support for throttle and stride options. Use `throttler`, instead:

@@ -3,7 +3,7 @@
 
 require 'lhm/command'
 require 'lhm/migration'
-require 'lhm/sql_helper'
+require 'lhm/sql_retry'
 
 module Lhm
   # Switches origin with destination table using an atomic rename.
@@ -13,31 +13,25 @@ module Lhm
   # Lhm::SqlHelper.supports_atomic_switch?.
   class AtomicSwitcher
     include Command
-    RETRY_SLEEP_TIME = 10
-    MAX_RETRIES = 600
 
-    attr_reader :connection, :retries
-    attr_writer :max_retries, :retry_sleep_time
+    attr_reader :connection
 
-    def initialize(migration, connection = nil)
+    def initialize(migration, connection = nil, options = {})
       @migration = migration
       @connection = connection
       @origin = migration.origin
       @destination = migration.destination
-      @retries = 0
-      @max_retries = MAX_RETRIES
-      @retry_sleep_time = RETRY_SLEEP_TIME
-    end
-
-    def statements
-      atomic_switch
+      @retry_helper = SqlRetry.new(
+        @connection,
+        {
+          log_prefix: "AtomicSwitcher"
+        }.merge!(options.fetch(:retriable, {}))
+      )
     end
 
     def atomic_switch
-      [
-        "rename table `#{ @origin.name }` to `#{ @migration.archive_name }`, " \
-        "`#{ @destination.name }` to `#{ @origin.name }`"
-      ]
+      "rename table `#{ @origin.name }` to `#{ @migration.archive_name }`, " \
+      "`#{ @destination.name }` to `#{ @origin.name }`"
     end
 
     def validate
@@ -50,23 +44,9 @@ module Lhm
     private
 
     def execute
-      begin
-        statements.each do |stmt|
-          @connection.execute(SqlHelper.tagged(stmt))
-        end
-      rescue ActiveRecord::StatementInvalid => error
-        if should_retry_exception?(error) && (@retries += 1) < @max_retries
-          sleep(@retry_sleep_time)
-          Lhm.logger.warn "Retrying sql=#{statements} error=#{error} retries=#{@retries}"
-          retry
-        else
-          raise
-        end
+      @retry_helper.with_retries do |retriable_connection|
+        retriable_connection.execute atomic_switch
       end
-    end
-
-    def should_retry_exception?(error)
-      defined?(Mysql2) && error.message =~ /Lock wait timeout exceeded/
     end
   end
 end

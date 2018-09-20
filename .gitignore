@@ -1,6 +1,5 @@
 *.gem
 .bundle
-Gemfile.lock
 gemfiles/*.lock
 pkg/*
 .rvmrc
@@ -12,3 +11,7 @@ Gemfile
 gemfiles/vendor
 omg.ponies
 *~
+coverage
+bin/dbdeployer
+/dbdeployer/sandboxes
+/dbdeployer/binaries

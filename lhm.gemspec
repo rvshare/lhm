@@ -18,11 +18,17 @@ Gem::Specification.new do |s|
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_paths = ['lib']
-  s.executables   = ['lhm-kill-queue']
+  s.executables   = []
+
+  s.required_ruby_version = '>= 2.3.0'
+
+  s.add_dependency 'retriable'
 
   s.add_development_dependency 'minitest'
   s.add_development_dependency 'mocha'
   s.add_development_dependency 'rake'
   s.add_development_dependency 'activerecord'
-  s.add_development_dependency 'mysql'
+  s.add_development_dependency 'mysql2'
+  s.add_development_dependency 'package_cloud'
+  s.add_development_dependency 'simplecov'
 end

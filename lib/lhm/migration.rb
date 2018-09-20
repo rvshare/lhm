@@ -2,6 +2,7 @@
 # Schmidt
 
 require 'lhm/intersection'
+require 'lhm/timestamp'
 
 module Lhm
   class Migration
@@ -11,20 +12,32 @@ module Lhm
       @origin = origin
       @destination = destination
       @conditions = conditions
-      @start = time
       @renames = renames
+      @table_name = TableName.new(@origin.name, time)
     end
 
     def archive_name
-      "lhma_#{ startstamp }_#{ @origin.name }"[0...64]
+      @archive_name ||= @table_name.archived
     end
 
     def intersection
       Intersection.new(@origin, @destination, @renames)
     end
 
-    def startstamp
-      @start.strftime "%Y_%m_%d_%H_%M_%S_#{ '%03d' % (@start.usec / 1000) }"
+    def origin_name
+      @table_name.original
+    end
+
+    def origin_columns
+      @origin_columns ||= intersection.origin.typed(origin_name)
+    end
+
+    def destination_name
+      @destination_name ||= destination.name
+    end
+
+    def destination_columns
+      @destination_columns ||= intersection.destination.joined
     end
   end
 end

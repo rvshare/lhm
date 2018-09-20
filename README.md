@@ -1,4 +1,6 @@
-# Large Hadron Migrator [![Build Status][5]][4]
+# Large Hadron Migrator
+[![Build status](https://badge.buildkite.com/6ed04595f04c5cf6f9f1453afd3705046f6c83088bd29cecf7.svg)](https://buildkite.com/shopify/lhm)
+This is the Shopify downstream fork of https://github.com/soundcloud/lhm.
 
 Rails style database migrations are a useful way to evolve your data schema in
 an agile manner. Most Rails projects start like this, and at first, making
@@ -215,18 +217,52 @@ Lhm.cleanup(true, until: Time.now - 86400)
 
 First, get set up for local development:
 
-    git clone git://github.com/soundcloud/lhm.git
-    cd lhm
+```
+dev clone lhm
+dev up
+```
 
-To run the tests, follow the instructions on [spec/README](https://github.com/soundcloud/lhm/blob/master/spec/README.md).
+To run the tests:
+```
+dev unit # unit tests
+dev int # integration tests
+dev test # all tests
+```
 
-We'll check out your contribution if you:
+You can run an individual test as follows:
+```
+bundle exec rake unit TEST=spec/integration/atomic_switcher_spec.rb
+```
 
-  * Provide a comprehensive suite of tests for your fork.
-  * Have a clear and documented rationale for your changes.
-  * Package these up in a pull request.
+You can get code coverage reporting for an individual test as follows:
+```
+rm -rf coverage; COV=1 bundle exec rake unit TEST=spec/integration/atomic_switcher_spec.rb; open coverage/index.html # test one file
+```
 
-We'll do our best to help you out with any contribution issues you may have.
+or get code coverage for all tests:
+```
+dev cov
+```
+
+### dbdeployer
+The integration tests rely on a master/slave replication setup of MySQL.
+We're using [dbdeployer](https://github.com/datacharmer/dbdeployer) to set this up via `./dbdeployer/install.sh`.
+`dbdeployer` provides scripts for operating and accessing the nodes in `./dbdeployer/sandboxes/rsandbox_5_7_22`.
+There is a lot in there, and most of time you shouldn't need to work with the nodes directly, but it's good
+to know where to go!
+
+## Releasing new versions:
+This gem is published to Shopify's internal PackageCloud
+
+The procedure to publish a new version:
+
+* Update `lib/lhm/version.rb`
+* Run bundle install to bump the Gemfile.lock version of the gem
+* Add CHANGELOG entries by seeing what has not been shipped yet in https://shipit.shopify.io/shopify/lhm/production
+* Open PR for version bump and merge to master
+* Create release on GitHub with a version number that matches version.rb
+* Visit https://shipit.shopify.io/shopify/lhm/production and deploy
+* See your new version on https://gems.shopify.io/packages/lhm
 
 ## License
 
